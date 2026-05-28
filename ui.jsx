@@ -296,6 +296,9 @@ function CartProvider({ children }) {
     return basket.packages.map((p) => ({
       id: p.id,
       name: Tebex.cleanProductName(p.name),
+      image: p.image || null,
+      quantity: (p.in_basket && p.in_basket.quantity) || p.quantity || 1,
+      unitPrice: (p.in_basket && p.in_basket.price) || 0,
       price: ((p.in_basket && p.in_basket.price) || 0) *
              ((p.in_basket && p.in_basket.quantity) || p.quantity || 1)
     }));
@@ -574,14 +577,34 @@ function CartDrawer({ open, onClose }) {
           ) : (
             <ul className="space-y-3">
               {cart.items.map((it, i) => (
-                <li key={i} className="card rounded-lg p-4 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="font-semibold text-sm truncate">{it.name}</div>
-                    <div className="text-[var(--fg-muted)] text-xs">Lifetime · 1 community</div>
+                <li key={i} className="card rounded-lg p-3 flex items-center gap-3">
+                  <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md border border-[var(--border)] bg-black">
+                    {it.image ? (
+                      <img
+                        src={it.image}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="img-fallback h-full w-full grid place-items-center text-[10px] uppercase tracking-wider text-[var(--accent-hover)]">
+                        Suty
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="font-bold text-sm">${it.price.toFixed(2)}</div>
-                    <button onClick={() => cart.remove(i)} className="h-7 w-7 grid place-items-center rounded-md text-white/50 hover:text-white hover:bg-white/[0.05] transition">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-sm truncate">{it.name}</div>
+                    <div className="text-[var(--fg-muted)] text-xs">
+                      {it.quantity > 1 ? `${it.quantity} × ` : ""}Lifetime · 1 community
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="font-bold text-sm tabular-nums">{Tebex.formatPrice(it.price, cart.currency)}</div>
+                    <button
+                      onClick={() => cart.remove(i)}
+                      aria-label={`Remove ${it.name}`}
+                      className="h-7 w-7 grid place-items-center rounded-md text-white/50 hover:text-[var(--accent-hover)] hover:bg-white/[0.05] transition"
+                    >
                       <Icon name="x" size={14} />
                     </button>
                   </div>
