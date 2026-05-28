@@ -209,6 +209,27 @@ async function fetchPackages(){
   if (!res.ok) throw new Error(`Tebex packages ${res.status}`);
   const json = await res.json();
   const list = (json.data || []).map(adaptPackage);
+
+  // Mark ONLY the single most-recently-created package as new — the
+  // adapter marks anything within 30 days, which can produce 3-4 'NEW'
+  // badges at once. Restrict to the latest drop so the badge actually
+  // means 'this is the freshest one'. Still gated by the 30-day window
+  // so an old catalog with no recent releases shows no badge at all.
+  let newestIdx = -1;
+  let newestTime = -Infinity;
+  list.forEach((p, i) => {
+    if (!p.createdAt) return;
+    const t = new Date(p.createdAt).getTime();
+    if (Number.isFinite(t) && t > newestTime) {
+      newestTime = t;
+      newestIdx = i;
+    }
+  });
+  list.forEach((p) => { p.isNew = false; });
+  if (newestIdx !== -1 && isRecentlyCreated(list[newestIdx].createdAt)) {
+    list[newestIdx].isNew = true;
+  }
+
   list.sort((a, b) => a.order - b.order);
   return list;
 }
