@@ -236,6 +236,40 @@ function FrameworkSection({ scripts }) {
   );
 }
 
+// Scroll-triggered <li> for one Recent Purchases row.
+// Each instance owns its own IntersectionObserver so there's no useReveal
+// mount-race, AND it renders as an <li> directly so the parent <ul>'s
+// divide-y borders stay valid.
+function RecentRow({ children, index = 0, className = "" }) {
+  const ref = useRef(null);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) { setShown(true); io.unobserve(e.target); }
+      });
+    }, { rootMargin: "0px 0px -4% 0px", threshold: 0.1 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return (
+    <li
+      ref={ref}
+      className={className}
+      style={{
+        opacity: shown ? 1 : 0,
+        transform: shown ? "translateY(0)" : "translateY(14px)",
+        transition: `opacity 600ms cubic-bezier(.16,1,.3,1) ${index * 60}ms, transform 600ms cubic-bezier(.16,1,.3,1) ${index * 60}ms`,
+        willChange: "opacity, transform",
+      }}
+    >
+      {children}
+    </li>
+  );
+}
+
 // Live recent purchases — fetched from suty.dev's /api/recent-payments
 // (CORS-allowlisted on the main site for this preview origin).
 const RECENT_PAYMENTS_URL = "https://suty.dev/api/recent-payments?limit=8";
@@ -331,9 +365,7 @@ function RecentPurchases() {
             {payments.map((p, i) => {
               const pkg = p.packages && p.packages[0];
               return (
-                <li key={p.id || i} className="flex items-center gap-4 px-5 py-4 hover:bg-white/[0.015] transition recent-row"
-                    style={{ animationDelay: `${i * 40}ms` }}
-                >
+                <RecentRow key={p.id || i} index={i} className="flex items-center gap-4 px-5 py-4 hover:bg-white/[0.015] transition">
                   <RealAvatar name={p.player} avatarUrl={p.avatarUrl} size={36} />
                   <div className="flex-1 min-w-0">
                     <div className="text-[13.5px] truncate">
@@ -356,7 +388,7 @@ function RecentPurchases() {
                     </div>
                   </div>
                   <div className="text-[11px] text-[var(--fg-dim)] font-mono">{timeAgo(p.date)} ago</div>
-                </li>
+                </RecentRow>
               );
             })}
           </ul>
