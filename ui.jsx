@@ -224,22 +224,57 @@ function CartProvider({ children }) {
   }, [refreshBasket]);
 
   // ── Cart mutations (purely local) ──
+  // Whether the cart already contains a script with this id
+  const hasItem = useCallback((id) => {
+    return items.some((i) => i.id === id);
+  }, [items]);
+
+  // Add a NEW item to the cart with quantity 1. Caller is responsible for
+  // checking hasItem() first if they want duplicate-handling UX (e.g. an
+  // "already in cart, add again?" confirm dialog).
   const add = useCallback((script) => {
-    // Mock-script ids (during catalog loading) aren't valid Tebex ids
     if (typeof script.id !== "number") {
       setError("Live catalogue isn't ready yet — try again in a second.");
       return;
     }
     setError(null);
-    setItems((prev) => [...prev, {
-      id: script.id,
-      name: script.displayName || script.name,
-      image: script.image || null,
-      price: script.price || 0,
-      currency: script.currency || "USD",
-      type: script.type || "single"
-    }]);
+    setItems((prev) => {
+      // Belt + suspenders: if somehow this gets called for an existing
+      // item, increment its qty rather than create a duplicate line.
+      const existingIdx = prev.findIndex((p) => p.id === script.id);
+      if (existingIdx !== -1) {
+        const next = prev.slice();
+        next[existingIdx] = { ...next[existingIdx], quantity: (next[existingIdx].quantity || 1) + 1 };
+        return next;
+      }
+      return [...prev, {
+        id: script.id,
+        name: script.displayName || script.name,
+        image: script.image || null,
+        price: script.price || 0,
+        currency: script.currency || "USD",
+        type: script.type || "single",
+        quantity: 1
+      }];
+    });
     setBumpKey((k) => k + 1);
+  }, [setItems]);
+
+  // Bump quantity by 1 for an item already in the cart
+  const incrementQuantity = useCallback((id) => {
+    setError(null);
+    setItems((prev) => prev.map((it) =>
+      it.id === id ? { ...it, quantity: (it.quantity || 1) + 1 } : it
+    ));
+    setBumpKey((k) => k + 1);
+  }, [setItems]);
+
+  // Decrement (floor 1) — for the cart drawer +/- controls if we add them
+  const decrementQuantity = useCallback((id) => {
+    setError(null);
+    setItems((prev) => prev.map((it) =>
+      it.id === id ? { ...it, quantity: Math.max(1, (it.quantity || 1) - 1) } : it
+    ));
   }, [setItems]);
 
   const remove = useCallback((idx) => {
@@ -279,11 +314,11 @@ function CartProvider({ children }) {
         ident = b.ident;
       }
 
-      // Push every draft item into the basket
+      // Push every draft item into the basket (respecting quantity)
       let needsAuth = false;
       for (const item of items) {
         try {
-          b = await Tebex.addPackageToBasket(ident, item.id, 1);
+          b = await Tebex.addPackageToBasket(ident, item.id, item.quantity || 1);
         } catch (err) {
           if (err && err.requiresAuth) { needsAuth = true; break; }
           throw err;
@@ -291,11 +326,12 @@ function CartProvider({ children }) {
       }
 
       if (needsAuth) {
-        // Stash the full pending item list so we can rebuild after auth
+        // Stash the full pending item list (id + qty pairs) so we can
+        // rebuild after FiveM auth.
         try {
           localStorage.setItem(
             Tebex.PENDING_KEY,
-            JSON.stringify(items.map((i) => i.id))
+            JSON.stringify(items.map((i) => ({ id: i.id, quantity: i.quantity || 1 })))
           );
         } catch {}
         const returnUrl = `${window.location.origin}/?fivem=return`;
@@ -322,18 +358,19 @@ function CartProvider({ children }) {
     }
   }, [items, checkoutLoading]);
 
-  const count    = items.length;
+  const count    = items.reduce((s, i) => s + (i.quantity || 1), 0);
   const currency = (items[0] && items[0].currency) || "USD";
-  const total    = items.reduce((s, i) => s + (Number(i.price) || 0), 0);
+  const total    = items.reduce((s, i) => s + (Number(i.price) || 0) * (i.quantity || 1), 0);
 
   const value = useMemo(() => ({
     items, add, remove, removeAll,
+    hasItem, incrementQuantity, decrementQuantity,
     refreshBasket, clearLocal,
     checkout, checkoutLoading,
     bumpKey, count,
     basket, error,
     currency, total
-  }), [items, add, remove, removeAll, refreshBasket, clearLocal, checkout, checkoutLoading, bumpKey, count, basket, error, currency, total]);
+  }), [items, add, remove, removeAll, hasItem, incrementQuantity, decrementQuantity, refreshBasket, clearLocal, checkout, checkoutLoading, bumpKey, count, basket, error, currency, total]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
@@ -435,6 +472,73 @@ function FivemButton() {
         aria-hidden
       />
     </button>
+  );
+}
+
+// ── Confirm dialog — centred modal with two-button decision ───────────
+function ConfirmDialog({ open, title, message, onConfirm, onCancel,
+                        confirmLabel = "Confirm", cancelLabel = "Cancel",
+                        tone = "accent" }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  // Lock scroll + handle Escape
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => { if (e.key === "Escape") onCancel && onCancel(); };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open, onCancel]);
+
+  if (!mounted || !open) return null;
+  const confirmClass = tone === "danger"
+    ? "bg-[#7f1d1d] hover:bg-[#991b1b] text-white"
+    : "btn-primary";
+
+  return ReactDOM.createPortal(
+    <div
+      className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/65 backdrop-blur-sm p-4 sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel && onCancel(); }}
+      style={{ animation: "page-fade-in 220ms cubic-bezier(.16,1,.3,1) both" }}
+    >
+      <div
+        className="card rounded-2xl p-6 sm:p-7 w-full max-w-md border border-[var(--border-2)]"
+        style={{ animation: "deck-fade-in 360ms cubic-bezier(.16,1,.3,1) both" }}
+      >
+        <div className="flex items-start gap-3">
+          <div className="h-9 w-9 grid place-items-center rounded-full bg-[rgba(153,27,27,0.16)] text-[var(--accent-hover)] shrink-0">
+            <Icon name="alert-circle" size={16} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-bold text-[16px] tracking-tight text-white">{title}</div>
+            {message && (
+              <div className="mt-1.5 text-[13.5px] text-[var(--fg-muted)] leading-relaxed">{message}</div>
+            )}
+          </div>
+        </div>
+        <div className="mt-6 flex items-center justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="btn-ghost inline-flex items-center justify-center gap-2 px-4 h-10 rounded-md text-sm font-semibold"
+          >
+            {cancelLabel}
+          </button>
+          <button
+            onClick={onConfirm}
+            className={"inline-flex items-center justify-center gap-2 px-4 h-10 rounded-md text-sm font-semibold transition-colors " + confirmClass}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -739,11 +843,16 @@ function CartDrawer({ open, onClose }) {
                   <div className="min-w-0 flex-1">
                     <div className="font-semibold text-sm truncate">{it.name}</div>
                     <div className="text-[var(--fg-muted)] text-xs">
+                      {(it.quantity || 1) > 1 && (
+                        <span className="text-white/85 font-semibold">{it.quantity} × </span>
+                      )}
                       {it.type === "subscription" ? "Subscription · billed monthly" : "Lifetime · 1 community"}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <div className="font-bold text-sm tabular-nums">{Tebex.formatPrice(it.price, it.currency || cart.currency)}</div>
+                    <div className="font-bold text-sm tabular-nums">
+                      {Tebex.formatPrice((it.price || 0) * (it.quantity || 1), it.currency || cart.currency)}
+                    </div>
                     <button
                       onClick={() => cart.remove(i)}
                       aria-label={`Remove ${it.name}`}
@@ -798,5 +907,5 @@ Object.assign(window, {
   Icon, SectionEyebrow, Chip, ButtonPrimary, ButtonGhost,
   Reveal, useReveal, FrameworkBadge, CartProvider, useCart,
   Avatar, Logo, Header, Footer, CartDrawer, NAV_ITEMS,
-  DiscordButton, FivemButton, DiscordLogo, MobileMenu, Toast
+  DiscordButton, FivemButton, DiscordLogo, MobileMenu, Toast, ConfirmDialog
 });

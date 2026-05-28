@@ -49,13 +49,23 @@ function App() {
       (async () => {
         const pendingRaw = localStorage.getItem(Tebex.PENDING_KEY);
         localStorage.removeItem(Tebex.PENDING_KEY);
-        let pendingIds = [];
+        // Pending format evolved: legacy = id (number), middle = [id, id, ...],
+        // current = [{ id, quantity }, ...]. Handle all three.
+        let pending = [];
         try {
           const parsed = JSON.parse(pendingRaw);
-          pendingIds = Array.isArray(parsed) ? parsed : (Number.isFinite(Number(parsed)) ? [Number(parsed)] : []);
+          if (Array.isArray(parsed)) {
+            pending = parsed.map((p) =>
+              typeof p === "object" && p !== null
+                ? { id: Number(p.id), quantity: Number(p.quantity) || 1 }
+                : { id: Number(p), quantity: 1 }
+            ).filter((p) => Number.isFinite(p.id));
+          } else if (Number.isFinite(Number(parsed))) {
+            pending = [{ id: Number(parsed), quantity: 1 }];
+          }
         } catch {
           const single = Number(pendingRaw);
-          if (Number.isFinite(single)) pendingIds = [single];
+          if (Number.isFinite(single)) pending = [{ id: single, quantity: 1 }];
         }
 
         let basket = await cart.refreshBasket();
@@ -69,17 +79,17 @@ function App() {
           }
         }
 
-        if (basket && pendingIds.length > 0) {
-          for (const id of pendingIds) {
+        if (basket && pending.length > 0) {
+          for (const it of pending) {
             try {
-              basket = await Tebex.addPackageToBasket(basket.ident, Number(id), 1);
+              basket = await Tebex.addPackageToBasket(basket.ident, it.id, it.quantity);
             } catch (err) {
-              console.warn(`[fivem-return] failed to re-add package ${id}`, err);
+              console.warn(`[fivem-return] failed to re-add package ${it.id} (qty ${it.quantity})`, err);
             }
           }
         }
 
-        if (basket && basket.links && basket.links.checkout && pendingIds.length > 0) {
+        if (basket && basket.links && basket.links.checkout && pending.length > 0) {
           // Forward directly to Tebex hosted checkout
           window.location.href = basket.links.checkout;
           return;
@@ -96,10 +106,24 @@ function App() {
     }
   }, [cart]);
 
+  // ── Add-to-cart with duplicate confirm ──
+  // If the user clicks Add on a script that's already in their cart,
+  // pause to confirm — and if they say yes, bump the quantity rather
+  // than spawning a second line item.
+  const [duplicateScript, setDuplicateScript] = useState(null);
   const onAdd = useCallback((script) => {
+    if (cart.hasItem(script.id)) {
+      setDuplicateScript(script);
+      return;
+    }
     cart.add(script);
-    // briefly open the cart? — no, just bump the badge; keeps the flow smooth.
   }, [cart]);
+
+  const confirmAddDuplicate = useCallback(() => {
+    if (duplicateScript) cart.incrementQuantity(duplicateScript.id);
+    setDuplicateScript(null);
+  }, [cart, duplicateScript]);
+  const cancelAddDuplicate = useCallback(() => setDuplicateScript(null), []);
 
   const onOpen = useCallback((script) => {
     setViewedProduct(script);
@@ -150,6 +174,20 @@ function App() {
       >
         {toast && toast.body}
       </Toast>
+
+      <ConfirmDialog
+        open={!!duplicateScript}
+        title="Already in your cart"
+        message={
+          duplicateScript
+            ? `"${duplicateScript.displayName || duplicateScript.name}" is already in your basket. Add another copy and increase the quantity?`
+            : ""
+        }
+        confirmLabel="Add another"
+        cancelLabel="Keep current"
+        onConfirm={confirmAddDuplicate}
+        onCancel={cancelAddDuplicate}
+      />
     </div>
   );
 }
