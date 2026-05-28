@@ -159,22 +159,47 @@ function FrameworkBadge({ kind, size = "sm", className = "" }) {
   );
 }
 
-// ── Cart context (real Tebex basket) ───────────────────────────────────
+// ── Cart context ───────────────────────────────────────────────────────
+//
+// Strategy: items live in **local storage only** until checkout. Adding
+// to cart is purely client-side (no Tebex API call, no FiveM auth bounce).
+// Only when the user explicitly clicks Checkout do we create the Tebex
+// basket, push items, handle the auth redirect if required, and forward
+// to Tebex's hosted checkout.
+//
+// Rationale: with Suty's package settings, Tebex requires a FiveM ident
+// on every basket mutation — so the old eager-add flow bounced users to
+// auth before they could even see what was in their cart. This flow
+// matches what storefronts like gabz.tebex.io / arius-store.tebex.io do.
+
+const DRAFT_KEY = "suty.draftItems";
 const CartContext = createContext(null);
 function CartProvider({ children }) {
-  const [basket, setBasket]               = useState(null);
-  const [loading, setLoading]             = useState(false);
-  const [error, setError]                 = useState(null);
-  const [optimisticAdds, setOptimisticAdds] = useState(0);
-  const [bumpKey, setBumpKey]             = useState(0);
+  // Local draft cart — persisted in localStorage, drives all UI
+  const [items, setItemsState] = useState(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
+  });
+  const [bumpKey, setBumpKey]               = useState(0);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [error, setError]                   = useState(null);
+  // Tebex basket (only populated after a checkout attempt — drives the
+  // FiveM-auth post-return flow + the `username` chip in the FivemButton).
+  const [basket, setBasket]                 = useState(null);
 
-  // Promise-singleton for basket creation: prevents duplicate baskets
-  // when the user spam-clicks Add before the first basket finishes.
-  const basketCreationRef = useRef(null);
-  // Serialise addItem calls so server sees them in order.
-  const addQueueRef = useRef(Promise.resolve());
+  // Persist draft items whenever they change
+  const setItems = useCallback((updater) => {
+    setItemsState((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
 
-  // Manual refresh — used after FiveM auth return and from focus listener
+  // Refresh the persisted Tebex basket (used post-FiveM-auth)
   const refreshBasket = useCallback(async () => {
     const ident = localStorage.getItem(Tebex.STORAGE_KEY);
     if (!ident) { setBasket(null); return null; }
@@ -186,11 +211,8 @@ function CartProvider({ children }) {
       return null;
     } catch { return null; }
   }, []);
-
-  // Hydrate from localStorage on mount
   useEffect(() => { refreshBasket(); }, [refreshBasket]);
-
-  // Refresh on tab focus (catches return-from-FiveM-auth)
+  // Re-check on focus / visibility (catches FiveM auth completion)
   useEffect(() => {
     const onVis = () => { if (document.visibilityState === "visible") refreshBasket(); };
     window.addEventListener("focus", refreshBasket);
@@ -201,136 +223,117 @@ function CartProvider({ children }) {
     };
   }, [refreshBasket]);
 
-  // Once real basket catches up to optimistic count, clear it
-  useEffect(() => {
-    if (optimisticAdds === 0 || !basket) return;
-    const real = (basket.packages || []).reduce(
-      (s, p) => s + ((p.in_basket && p.in_basket.quantity) || p.quantity || 1), 0
-    );
-    if (real > 0) setOptimisticAdds(0);
-  }, [basket, optimisticAdds]);
-
-  const ensureBasket = useCallback(async () => {
-    if (basket) return basket;
-    if (basketCreationRef.current) return basketCreationRef.current;
-    basketCreationRef.current = (async () => {
-      try {
-        const b = await Tebex.createBasket();
-        localStorage.setItem(Tebex.STORAGE_KEY, b.ident);
-        setBasket(b);
-        return b;
-      } catch (err) {
-        basketCreationRef.current = null;
-        throw err;
-      }
-    })();
-    return basketCreationRef.current;
-  }, [basket]);
-
-  const add = useCallback(async (script) => {
-    // Mock-script ids are strings like "mock-queue" — can't be added to Tebex
+  // ── Cart mutations (purely local) ──
+  const add = useCallback((script) => {
+    // Mock-script ids (during catalog loading) aren't valid Tebex ids
     if (typeof script.id !== "number") {
-      setError("Live catalogue isn't available right now — try again in a sec.");
+      setError("Live catalogue isn't ready yet — try again in a second.");
       return;
     }
-    setOptimisticAdds((n) => n + 1);
+    setError(null);
+    setItems((prev) => [...prev, {
+      id: script.id,
+      name: script.displayName || script.name,
+      image: script.image || null,
+      price: script.price || 0,
+      currency: script.currency || "USD",
+      type: script.type || "single"
+    }]);
     setBumpKey((k) => k + 1);
+  }, [setItems]);
 
-    const work = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const b = await ensureBasket();
-        try {
-          const updated = await Tebex.addPackageToBasket(b.ident, script.id, 1);
-          setBasket(updated);
-        } catch (err) {
-          if (err && err.requiresAuth) {
-            // FiveM auth required → stash the package id we were trying to add
-            // and redirect through Tebex. On return (?fivem=return) we'll re-add it.
-            try { localStorage.setItem(Tebex.PENDING_KEY, String(script.id)); } catch {}
-            const returnUrl = `${window.location.origin}/?fivem=return`;
-            const authUrls = await Tebex.getBasketAuthUrls(b.ident, returnUrl);
-            const fivem = (authUrls || []).find(
-              (u) => u.name && u.name.toLowerCase() === "fivem"
-            ) || (authUrls || [])[0];
-            if (fivem && fivem.url) { window.location.href = fivem.url; return; }
-            throw new Error("No authentication provider available for this basket.");
-          }
-          throw err;
-        }
-      } catch (err) {
-        setOptimisticAdds((n) => Math.max(0, n - 1));
-        setError((err && err.message) || String(err));
-      } finally {
-        setLoading(false);
-      }
-    };
+  const remove = useCallback((idx) => {
+    setItems((prev) => prev.filter((_, i) => i !== idx));
+  }, [setItems]);
 
-    const next = addQueueRef.current.then(() => work(), () => work());
-    addQueueRef.current = next.catch(() => undefined);
-    return next;
-  }, [ensureBasket]);
+  const removeAll = useCallback(() => {
+    setItems([]);
+  }, [setItems]);
 
-  // Hard-clear the local basket — used after a successful checkout
+  // Hard-clear everything (post-successful-checkout)
   const clearLocal = useCallback(() => {
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
     try { localStorage.removeItem(Tebex.STORAGE_KEY); } catch {}
     try { localStorage.removeItem(Tebex.PENDING_KEY); } catch {}
-    basketCreationRef.current = null;
+    setItemsState([]);
     setBasket(null);
-    setOptimisticAdds(0);
     setError(null);
   }, []);
 
-  const removeById = useCallback(async (packageId) => {
-    if (!basket) return;
-    setLoading(true);
+  // ── Checkout — only here do we talk to Tebex ──
+  const checkout = useCallback(async () => {
+    if (items.length === 0 || checkoutLoading) return;
+    setCheckoutLoading(true);
+    setError(null);
     try {
-      const updated = await Tebex.removePackageFromBasket(basket.ident, packageId);
-      setBasket(updated);
+      // Get or create a Tebex basket
+      let ident = localStorage.getItem(Tebex.STORAGE_KEY);
+      let b = null;
+      if (ident) {
+        try { b = await Tebex.getBasket(ident); } catch { b = null; }
+        if (!b || b.complete) { ident = null; b = null; }
+      }
+      if (!ident) {
+        b = await Tebex.createBasket();
+        localStorage.setItem(Tebex.STORAGE_KEY, b.ident);
+        ident = b.ident;
+      }
+
+      // Push every draft item into the basket
+      let needsAuth = false;
+      for (const item of items) {
+        try {
+          b = await Tebex.addPackageToBasket(ident, item.id, 1);
+        } catch (err) {
+          if (err && err.requiresAuth) { needsAuth = true; break; }
+          throw err;
+        }
+      }
+
+      if (needsAuth) {
+        // Stash the full pending item list so we can rebuild after auth
+        try {
+          localStorage.setItem(
+            Tebex.PENDING_KEY,
+            JSON.stringify(items.map((i) => i.id))
+          );
+        } catch {}
+        const returnUrl = `${window.location.origin}/?fivem=return`;
+        const authUrls = await Tebex.getBasketAuthUrls(ident, returnUrl);
+        const fivem = (authUrls || []).find(
+          (u) => u.name && u.name.toLowerCase() === "fivem"
+        ) || (authUrls || [])[0];
+        if (fivem && fivem.url) {
+          window.location.href = fivem.url;
+          return;
+        }
+        throw new Error("FiveM auth provider not available for this basket.");
+      }
+
+      setBasket(b);
+      if (b && b.links && b.links.checkout) {
+        window.location.href = b.links.checkout;
+        return;
+      }
+      throw new Error("Tebex didn't return a checkout link.");
     } catch (err) {
       setError((err && err.message) || String(err));
-    } finally {
-      setLoading(false);
+      setCheckoutLoading(false);
     }
-  }, [basket]);
+  }, [items, checkoutLoading]);
 
-  // Legacy idx-based remove (CartDrawer calls remove(i))
-  const remove = useCallback((idx) => {
-    if (!basket || !basket.packages[idx]) return;
-    return removeById(basket.packages[idx].id);
-  }, [basket, removeById]);
-
-  const items = useMemo(() => {
-    if (!basket) return [];
-    return basket.packages.map((p) => ({
-      id: p.id,
-      name: Tebex.cleanProductName(p.name),
-      image: p.image || null,
-      quantity: (p.in_basket && p.in_basket.quantity) || p.quantity || 1,
-      unitPrice: (p.in_basket && p.in_basket.price) || 0,
-      price: ((p.in_basket && p.in_basket.price) || 0) *
-             ((p.in_basket && p.in_basket.quantity) || p.quantity || 1)
-    }));
-  }, [basket]);
-
-  const realCount = useMemo(() => {
-    if (!basket) return 0;
-    return basket.packages.reduce(
-      (s, p) => s + ((p.in_basket && p.in_basket.quantity) || p.quantity || 1), 0
-    );
-  }, [basket]);
-  const count = Math.max(realCount, realCount + optimisticAdds);
+  const count    = items.length;
+  const currency = (items[0] && items[0].currency) || "USD";
+  const total    = items.reduce((s, i) => s + (Number(i.price) || 0), 0);
 
   const value = useMemo(() => ({
-    items, add, remove, removeById,
+    items, add, remove, removeAll,
     refreshBasket, clearLocal,
+    checkout, checkoutLoading,
     bumpKey, count,
-    basket, loading, error,
-    checkoutUrl: basket && basket.links && basket.links.checkout,
-    currency: (basket && basket.currency) || "USD",
-    total: (basket && basket.total_price) || 0
-  }), [items, add, remove, removeById, refreshBasket, clearLocal, bumpKey, count, basket, loading, error]);
+    basket, error,
+    currency, total
+  }), [items, add, remove, removeAll, refreshBasket, clearLocal, checkout, checkoutLoading, bumpKey, count, basket, error, currency, total]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
@@ -606,7 +609,7 @@ function Header({ page, setPage, onOpenCart }) {
         </nav>
 
         <div className="flex items-center gap-2">
-          <div className="hidden sm:block"><DiscordButton /></div>
+          <DiscordButton />
           <FivemButton />
           <button onClick={onOpenCart} aria-label="Open cart" className="relative h-10 w-10 grid place-items-center rounded-md border border-[var(--border-2)] hover:border-[#3a3a3a] hover:bg-white/[0.03] transition">
             <Icon name="shopping-bag" size={15} />
@@ -736,11 +739,11 @@ function CartDrawer({ open, onClose }) {
                   <div className="min-w-0 flex-1">
                     <div className="font-semibold text-sm truncate">{it.name}</div>
                     <div className="text-[var(--fg-muted)] text-xs">
-                      {it.quantity > 1 ? `${it.quantity} × ` : ""}Lifetime · 1 community
+                      {it.type === "subscription" ? "Subscription · billed monthly" : "Lifetime · 1 community"}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <div className="font-bold text-sm tabular-nums">{Tebex.formatPrice(it.price, cart.currency)}</div>
+                    <div className="font-bold text-sm tabular-nums">{Tebex.formatPrice(it.price, it.currency || cart.currency)}</div>
                     <button
                       onClick={() => cart.remove(i)}
                       aria-label={`Remove ${it.name}`}
@@ -773,19 +776,17 @@ function CartDrawer({ open, onClose }) {
                 <span className="text-[var(--fg-muted)] text-xs font-normal ml-1">{cart.currency}</span>
               </span>
             </div>
-            {cart.checkoutUrl ? (
-              <a
-                href={cart.checkoutUrl}
-                className="btn-primary inline-flex items-center justify-center gap-2 px-5 h-11 rounded-md text-sm font-semibold w-full"
-              >
-                Checkout <Icon name="arrow-right" size={14} />
-              </a>
-            ) : (
-              <ButtonPrimary className="w-full" disabled icon={<Icon name="loader" size={14} />}>
-                Preparing checkout…
-              </ButtonPrimary>
-            )}
-            <div className="text-[11px] text-[var(--fg-dim)] text-center">Secure checkout via Tebex · all major cards</div>
+            <ButtonPrimary
+              className="w-full"
+              onClick={cart.checkout}
+              disabled={cart.checkoutLoading}
+              icon={<Icon name={cart.checkoutLoading ? "loader" : "arrow-right"} size={14} />}
+            >
+              {cart.checkoutLoading ? "Preparing checkout…" : "Checkout"}
+            </ButtonPrimary>
+            <div className="text-[11px] text-[var(--fg-dim)] text-center">
+              Secure checkout via Tebex · FiveM ident requested at checkout
+            </div>
           </div>
         )}
       </aside>

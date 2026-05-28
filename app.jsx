@@ -42,26 +42,55 @@ function App() {
       return;
     }
     if (fivem === "return") {
-      // FiveM auth complete — refresh basket (populates username), then
-      // re-add the pending package the user was trying to buy.
+      // FiveM auth complete — rebuild the Tebex basket from the pending
+      // item list we stashed before redirecting, then forward straight to
+      // Tebex's hosted checkout. This matches the 'click Checkout once,
+      // not Checkout-twice-with-an-auth-detour' UX.
       (async () => {
         const pendingRaw = localStorage.getItem(Tebex.PENDING_KEY);
         localStorage.removeItem(Tebex.PENDING_KEY);
-        const fresh = await cart.refreshBasket();
-        const pkgId = Number(pendingRaw);
-        if (fresh && Number.isFinite(pkgId)) {
+        let pendingIds = [];
+        try {
+          const parsed = JSON.parse(pendingRaw);
+          pendingIds = Array.isArray(parsed) ? parsed : (Number.isFinite(Number(parsed)) ? [Number(parsed)] : []);
+        } catch {
+          const single = Number(pendingRaw);
+          if (Number.isFinite(single)) pendingIds = [single];
+        }
+
+        let basket = await cart.refreshBasket();
+        if (!basket) {
+          // Lost the basket on the way back — start a fresh one
           try {
-            await Tebex.addPackageToBasket(fresh.ident, pkgId, 1);
-            await cart.refreshBasket();
+            basket = await Tebex.createBasket();
+            localStorage.setItem(Tebex.STORAGE_KEY, basket.ident);
           } catch (err) {
-            console.warn("[fivem-return] failed to re-add pending package", err);
+            console.warn("[fivem-return] couldn't recreate basket", err);
           }
         }
+
+        if (basket && pendingIds.length > 0) {
+          for (const id of pendingIds) {
+            try {
+              basket = await Tebex.addPackageToBasket(basket.ident, Number(id), 1);
+            } catch (err) {
+              console.warn(`[fivem-return] failed to re-add package ${id}`, err);
+            }
+          }
+        }
+
+        if (basket && basket.links && basket.links.checkout && pendingIds.length > 0) {
+          // Forward directly to Tebex hosted checkout
+          window.location.href = basket.links.checkout;
+          return;
+        }
+
+        // No pending items (user just connected, not mid-purchase) → toast + cart drawer
         setCartOpen(true);
         setToast({
           tone: "success",
-          title: fresh && fresh.username ? `Linked as ${fresh.username}` : "FiveM linked",
-          body: "Your basket is ready — review and check out below.",
+          title: basket && basket.username ? `Linked as ${basket.username}` : "FiveM linked",
+          body: "Your account is connected. Add scripts to your cart and check out any time.",
         });
       })();
     }

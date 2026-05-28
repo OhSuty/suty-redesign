@@ -777,13 +777,14 @@ function ProductDetailPage({ script, onBack, onAdd }) {
               </div>
 
               <div className="mt-8 flex items-center gap-3">
-                <ButtonPrimary
-                  onClick={() => onAdd && onAdd(script)}
-                  icon={<Icon name="arrow-right" size={14} />}
+                <AddCTA
+                  script={script}
+                  onAdd={onAdd}
+                  label={isSub ? "Subscribe" : "Add to cart"}
+                  labelAdded="Added to cart"
                   className="flex-1 md:flex-none"
-                >
-                  {isSub ? "Subscribe" : "Add to cart"}
-                </ButtonPrimary>
+                />
+
                 <a
                   href={Tebex.DISCORD_URL}
                   target="_blank"

@@ -28,6 +28,19 @@ function ProductImage({ src, alt }) {
 
 function ProductCard({ script, onAdd, onOpen, compact = false }) {
   const isSub = script.type === "subscription";
+  const [added, setAdded] = useState(false);
+  const addedTimerRef = useRef(null);
+  useEffect(() => () => clearTimeout(addedTimerRef.current), []);
+
+  const onAddClick = (e) => {
+    e.stopPropagation();
+    if (!onAdd) return;
+    onAdd(script);
+    setAdded(true);
+    clearTimeout(addedTimerRef.current);
+    addedTimerRef.current = setTimeout(() => setAdded(false), 1500);
+  };
+
   const open = (e) => {
     // Don't fire if click came from the Add button (it stops propagation, but belt + suspenders)
     if (e && e.target && e.target.closest && e.target.closest("[data-stop-card-click]")) return;
@@ -96,15 +109,47 @@ function ProductCard({ script, onAdd, onOpen, compact = false }) {
           </div>
           <button
             data-stop-card-click
-            onClick={(e) => { e.stopPropagation(); onAdd && onAdd(script); }}
-            className="btn-primary inline-flex items-center gap-2 px-4 h-10 rounded-md text-[13px] font-semibold"
+            onClick={onAddClick}
+            disabled={added}
+            className={"inline-flex items-center gap-2 px-4 h-10 rounded-md text-[13px] font-semibold transition-all " + (
+              added
+                ? "bg-[rgba(74,222,128,0.18)] text-[#86efac] border border-[rgba(74,222,128,0.45)]"
+                : "btn-primary"
+            )}
           >
-            <Icon name="plus" size={14} />
-            Add
+            <Icon name={added ? "check" : "plus"} size={14} />
+            {added ? "Added" : "Add"}
           </button>
         </div>
       </div>
     </article>
+  );
+}
+
+// Reusable "Add to cart" / "Subscribe" CTA with the same Added feedback
+function AddCTA({ script, onAdd, label = "Add to cart", labelAdded = "Added", icon = "arrow-right", className = "" }) {
+  const [added, setAdded] = useState(false);
+  const tRef = useRef(null);
+  useEffect(() => () => clearTimeout(tRef.current), []);
+  return (
+    <button
+      onClick={() => {
+        if (!onAdd) return;
+        onAdd(script);
+        setAdded(true);
+        clearTimeout(tRef.current);
+        tRef.current = setTimeout(() => setAdded(false), 1500);
+      }}
+      disabled={added}
+      className={"inline-flex items-center justify-center gap-2 px-5 h-11 rounded-md text-sm font-semibold transition-all " + (
+        added
+          ? "bg-[rgba(74,222,128,0.18)] text-[#86efac] border border-[rgba(74,222,128,0.45)]"
+          : "btn-primary"
+      ) + " " + className}
+    >
+      <Icon name={added ? "check" : icon} size={14} />
+      {added ? labelAdded : label}
+    </button>
   );
 }
 
@@ -141,9 +186,7 @@ function FeaturedSubscriptionCard({ sub, allScripts, onAdd }) {
           <div className="text-xs text-[var(--fg-dim)] mt-1">{list.length > 0 ? `Includes ${list.length} scripts · ` : ""}cancel anytime</div>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
-            <ButtonPrimary onClick={() => onAdd && onAdd(sub)} icon={<Icon name="arrow-right" size={14} />}>
-              Subscribe
-            </ButtonPrimary>
+            <AddCTA script={sub} onAdd={onAdd} label="Subscribe" labelAdded="Added" />
             <ButtonGhost>See what’s included</ButtonGhost>
           </div>
         </div>
@@ -182,7 +225,7 @@ function SubscriptionCard({ sub, onAdd }) {
           <div className="text-3xl font-bold tracking-tighter tabular-nums">{Tebex.formatPrice(sub.price, sub.currency)}</div>
           <div className="text-[11px] text-[var(--fg-dim)] mt-0.5">/ month</div>
         </div>
-        <ButtonPrimary onClick={() => onAdd && onAdd(sub)}>Subscribe</ButtonPrimary>
+        <AddCTA script={sub} onAdd={onAdd} label="Subscribe" labelAdded="Added" />
       </div>
     </article>
   );
@@ -202,4 +245,4 @@ function ProductGrid({ scripts, onAdd, onOpen, columns = 3 }) {
   );
 }
 
-Object.assign(window, { ProductCard, ProductGrid, FeaturedSubscriptionCard, SubscriptionCard, ProductImage });
+Object.assign(window, { ProductCard, ProductGrid, FeaturedSubscriptionCard, SubscriptionCard, ProductImage, AddCTA });
