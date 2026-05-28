@@ -178,7 +178,7 @@ function ShowcaseDeck({ scripts, onAdd, onMore }) {
   );
 }
 
-function FrameworkSection({ active, setActive, scripts }) {
+function FrameworkSection({ scripts }) {
   const list = scripts || [];
   // Order matches suty.dev exactly: ESX → QBCore → QBX
   const order = ["esx", "qbcore", "qbx"];
@@ -203,39 +203,30 @@ function FrameworkSection({ active, setActive, scripts }) {
             const meta = FRAMEWORK_META[f];
             if (!meta) return null;
             const count = list.filter(s => s.frameworks.includes(f)).length;
-            const isActive = active === f;
             return (
               <Reveal key={f} delay={i * 140}>
-                <button
-                  onClick={() => setActive(isActive ? null : f)}
-                  aria-label={`${meta.label} — ${count} scripts`}
+                <a
+                  href={meta.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`${meta.label} — open framework site in new tab`}
                   title={`${meta.label} → ${meta.href.replace(/^https?:\/\//, "")}`}
                   className="group flex flex-col items-center gap-3 outline-none w-full"
                 >
-                <div
-                  className={
-                    "relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl border bg-black p-3 sm:p-4 transition-all duration-300 group-hover:scale-105 " +
-                    (isActive
-                      ? "border-[var(--accent)] shadow-[0_0_24px_rgba(153,27,27,0.45)]"
-                      : "border-[var(--border)] group-hover:border-[var(--accent)]")
-                  }
-                >
-                  <img
-                    src={meta.image}
-                    alt={meta.label}
-                    className="h-full w-full object-contain"
-                  />
-                </div>
-                <div className={
-                  "text-xs sm:text-sm font-bold uppercase tracking-[0.2em] transition-colors " +
-                  (isActive ? "text-[var(--accent-hover)]" : "text-white group-hover:text-[var(--accent-hover)]")
-                }>
-                  {meta.label}
-                </div>
+                  <div className="relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl border border-[var(--border)] bg-black p-3 sm:p-4 transition-all duration-300 group-hover:scale-105 group-hover:border-[var(--accent)]">
+                    <img
+                      src={meta.image}
+                      alt={meta.label}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-white transition-colors group-hover:text-[var(--accent-hover)]">
+                    {meta.label}
+                  </div>
                   <div className="text-[10px] uppercase tracking-[0.22em] text-[var(--fg-muted)]">
                     {count} {count === 1 ? "script" : "scripts"}
                   </div>
-                </button>
+                </a>
               </Reveal>
             );
           })}
@@ -320,7 +311,6 @@ function FAQSection() {
 
 function LandingPage({ onAdd, setPage }) {
   const { packages, loading } = useScripts();
-  const [frameworkFilter, setFrameworkFilter] = useState(null);
   const onlySingles = useMemo(() => packages.filter(p => p.type !== "subscription"), [packages]);
   return (
     <React.Fragment>
@@ -335,7 +325,7 @@ function LandingPage({ onAdd, setPage }) {
       ) : (
         <ShowcaseDeck scripts={onlySingles} onAdd={onAdd} onMore={() => setPage("scripts")} />
       )}
-      <FrameworkSection active={frameworkFilter} setActive={setFrameworkFilter} scripts={onlySingles} />
+      <FrameworkSection scripts={onlySingles} />
       <RecentPurchases />
       <FAQSection />
     </React.Fragment>
