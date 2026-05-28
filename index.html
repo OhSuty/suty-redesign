@@ -372,6 +372,16 @@
   /* prevent layout shift in icons */
   svg{ flex-shrink:0; }
 
+  /* Recent purchases row — soft cascade-in when the live list mounts */
+  @keyframes recent-row-in{
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .recent-row{
+    opacity: 0;
+    animation: recent-row-in 500ms cubic-bezier(.16,1,.3,1) both;
+  }
+
   /* Showcase deck — cinematic crossfade with blur sharpen (matches suty.dev) */
   @keyframes deck-fade-in{
     from { opacity: 0; transform: translateY(16px) scale(0.94); filter: blur(6px); }

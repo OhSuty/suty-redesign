@@ -274,7 +274,6 @@ function RealAvatar({ name, avatarUrl, size = 36 }) {
 
 function RecentPurchases() {
   const [payments, setPayments] = useState(null); // null = loading, [] = empty
-  const ref = useReveal({ stagger: 40 });
 
   useEffect(() => {
     let cancelled = false;
@@ -328,11 +327,13 @@ function RecentPurchases() {
             No recent purchases — be the first 🎉
           </div>
         ) : (
-          <ul ref={ref} className="card rounded-xl divide-y divide-[var(--border)] overflow-hidden">
+          <ul className="card rounded-xl divide-y divide-[var(--border)] overflow-hidden">
             {payments.map((p, i) => {
               const pkg = p.packages && p.packages[0];
               return (
-                <li key={p.id || i} className="reveal flex items-center gap-4 px-5 py-4 hover:bg-white/[0.015] transition">
+                <li key={p.id || i} className="flex items-center gap-4 px-5 py-4 hover:bg-white/[0.015] transition recent-row"
+                    style={{ animationDelay: `${i * 40}ms` }}
+                >
                   <RealAvatar name={p.player} avatarUrl={p.avatarUrl} size={36} />
                   <div className="flex-1 min-w-0">
                     <div className="text-[13.5px] truncate">
