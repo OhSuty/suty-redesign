@@ -142,13 +142,21 @@ function ShowcaseDeck({ scripts, onAdd, onOpen, onMore }) {
           </div>
         </Reveal>
 
-        <Reveal delay={80}>
-          <div className="stage-deck flex flex-col items-center justify-center gap-6 sm:flex-row sm:items-end sm:gap-4" style={{ perspective: "1400px" }}>
+        {/* Per-card Reveal wrappers so the three cards cascade in instead
+            of popping together. Center fires first (it's the headline
+            card), wings follow ~200ms behind. Order matches the visual
+            hierarchy of the deck. */}
+        <div className="stage-deck flex flex-col items-center justify-center gap-6 sm:flex-row sm:items-end sm:gap-4" style={{ perspective: "1400px" }}>
+          <Reveal delay={250}>
             <ShowcaseMini key={`L-${left.id}`}   script={left}   position="left"   onClick={() => onOpen && onOpen(left)} />
+          </Reveal>
+          <Reveal delay={80}>
             <ShowcaseMini key={`C-${center.id}`} script={center} position="center" onClick={() => onOpen && onOpen(center)} />
+          </Reveal>
+          <Reveal delay={400}>
             <ShowcaseMini key={`R-${right.id}`}  script={right}  position="right"  onClick={() => onOpen && onOpen(right)} />
-          </div>
-        </Reveal>
+          </Reveal>
+        </div>
 
         {ordered.length > 1 && (
           <Reveal delay={120}>
