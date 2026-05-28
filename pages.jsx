@@ -53,8 +53,8 @@ function ShowcaseMini({ script, position, onClick }) {
     position === "center"
       ? "sm:-translate-y-8 z-10 border-[var(--accent)]"
       : position === "left"
-        ? "rotate-y-15 sm:rotate-y-15"
-        : "-rotate-y-15 sm:-rotate-y-15";
+        ? "sm:rotate-y-15"          // flat on mobile (stacks vertically), tilted on sm+
+        : "sm:-rotate-y-15";
   const extraShadow =
     position === "center"
       ? { boxShadow: "0 30px 80px rgba(153,27,27,0.45)" }

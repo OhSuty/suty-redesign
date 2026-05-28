@@ -424,6 +424,97 @@ function FivemButton() {
   );
 }
 
+// ── Mobile menu — hamburger + fullscreen drawer (portal-rendered) ─────
+function MobileMenu({ page, setPage }) {
+  const [open, setOpen]       = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  // Lock body scroll while open
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  const navTo = (id) => {
+    setOpen(false);
+    setPage(id);
+  };
+
+  return (
+    <React.Fragment>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label={open ? "Close menu" : "Open menu"}
+        aria-expanded={open}
+        className="relative z-[60] flex h-10 w-10 items-center justify-center rounded-md border border-[var(--border-2)] text-white/85 hover:border-[#3a3a3a] hover:bg-white/[0.03] transition md:hidden"
+      >
+        <span className="relative block h-3 w-5">
+          <span className={"absolute left-0 top-0 block h-[2px] w-full bg-current transition-transform duration-300 " + (open ? "translate-y-[5px] rotate-45" : "")} />
+          <span className={"absolute left-0 top-[5px] block h-[2px] w-full bg-current transition-opacity duration-200 " + (open ? "opacity-0" : "opacity-100")} />
+          <span className={"absolute left-0 top-[10px] block h-[2px] w-full bg-current transition-transform duration-300 " + (open ? "-translate-y-[5px] -rotate-45" : "")} />
+        </span>
+      </button>
+
+      {mounted && open && ReactDOM.createPortal(
+        <div
+          className="fixed inset-0 z-[55] flex flex-col bg-black md:hidden page-transition"
+          role="dialog"
+          aria-modal="true"
+        >
+          {/* spacer so the drawer content sits below the sticky header */}
+          <div className="h-16 border-b border-[var(--border)]" />
+
+          <nav className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            {NAV_ITEMS.map((it) => {
+              const isActive = page === it.id;
+              return (
+                <button
+                  key={it.id}
+                  onClick={() => navTo(it.id)}
+                  className={"flex items-center justify-between rounded-lg border px-5 py-4 text-lg font-semibold transition-colors " +
+                    (isActive
+                      ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                      : "border-[var(--border)] text-white/90 hover:border-[var(--accent)] hover:text-[var(--accent-hover)]")}
+                  style={isActive ? { boxShadow: "0 0 18px rgba(153,27,27,0.45), inset 0 1px 0 rgba(255,255,255,0.18)" } : undefined}
+                >
+                  <span>{it.label}</span>
+                  <span className="text-xl opacity-60">→</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="mt-auto px-6 pb-8">
+            <a
+              href={Tebex.DISCORD_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-center gap-2 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white py-3 font-semibold transition-colors"
+            >
+              <DiscordLogo /> Join the Discord
+            </a>
+            <div className="mt-4 text-center text-xs text-[var(--fg-dim)]">
+              © {new Date().getFullYear()} Suty — premium FiveM scripts
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </React.Fragment>
+  );
+}
+
 // ── Header / nav ───────────────────────────────────────────────────────
 const NAV_ITEMS = [
   { id: "scripts",        label: "Scripts" },
@@ -444,10 +535,13 @@ function Header({ page, setPage, onOpenCart }) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-black/70 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <button onClick={() => setPage("home")} className="flex items-center group" aria-label="Suty — home">
-          <Logo size={40} />
-        </button>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <MobileMenu page={page} setPage={setPage} />
+          <button onClick={() => setPage("home")} className="flex items-center group shrink-0" aria-label="Suty — home">
+            <Logo size={40} />
+          </button>
+        </div>
 
         <nav className="hidden md:flex items-center pill-nav rounded-full p-1">
           {NAV_ITEMS.map((it) => {
@@ -465,7 +559,7 @@ function Header({ page, setPage, onOpenCart }) {
         </nav>
 
         <div className="flex items-center gap-2">
-          <DiscordButton />
+          <div className="hidden sm:block"><DiscordButton /></div>
           <FivemButton />
           <button onClick={onOpenCart} aria-label="Open cart" className="relative h-10 w-10 grid place-items-center rounded-md border border-[var(--border-2)] hover:border-[#3a3a3a] hover:bg-white/[0.03] transition">
             <Icon name="shopping-bag" size={15} />
@@ -656,5 +750,5 @@ Object.assign(window, {
   Icon, SectionEyebrow, Chip, ButtonPrimary, ButtonGhost,
   Reveal, useReveal, FrameworkBadge, CartProvider, useCart,
   Avatar, Logo, Header, Footer, CartDrawer, NAV_ITEMS,
-  DiscordButton, FivemButton, DiscordLogo
+  DiscordButton, FivemButton, DiscordLogo, MobileMenu
 });
