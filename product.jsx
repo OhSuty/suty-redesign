@@ -81,18 +81,10 @@ function ProductCard({ script, onAdd, onOpen, compact = false }) {
 
       {/* Body — compact on phone (2-col grid), full on sm+ */}
       <div className="p-3 sm:p-5 flex-1 flex flex-col">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold tracking-tight text-[13px] sm:text-[15px] leading-snug line-clamp-2 min-h-[2.2rem] sm:min-h-[2.6rem]">
-            {script.displayName || script.name}
-          </h3>
-          <div className="hidden sm:flex items-center gap-1 text-[var(--fg-muted)] text-xs whitespace-nowrap">
-            <Icon name="star" size={12} />
-            <span className="font-mono">4.9</span>
-          </div>
-        </div>
-
-        {/* Description hidden on phone — too cramped at 2 cards/row */}
-        <p className="hidden sm:block mt-2 text-[13px] text-[var(--fg-muted)] leading-relaxed line-clamp-2">{script.description}</p>
+        {/* Name only — description lives on the detail page */}
+        <h3 className="font-bold tracking-tight text-[13px] sm:text-[15px] leading-snug line-clamp-2 min-h-[2.2rem] sm:min-h-[2.6rem]">
+          {script.displayName || script.name}
+        </h3>
 
         {/* Framework badges — keep small on phone */}
         <div className="mt-3 sm:mt-4 flex items-center gap-1 sm:gap-1.5 flex-wrap min-h-[22px] sm:min-h-[26px]">
