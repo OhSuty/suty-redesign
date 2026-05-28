@@ -166,6 +166,8 @@ function App() {
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
 
+      <BradleyChat />
+
       <Toast
         open={!!toast}
         onClose={() => setToast(null)}

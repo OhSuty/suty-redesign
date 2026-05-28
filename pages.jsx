@@ -3,6 +3,12 @@
 // ── Landing page ──────────────────────────────────────────────────────
 function HeroLanding({ onCTA }) {
   const [on, setOn] = useState(false);
+  // Pick a random headline once per mount — landing-page re-mounts on each
+  // nav back, so revisits cycle to a fresh tagline.
+  const headline = useMemo(
+    () => HEADLINES[Math.floor(Math.random() * HEADLINES.length)],
+    []
+  );
   useEffect(() => { const t = setTimeout(() => setOn(true), 60); return () => clearTimeout(t); }, []);
   return (
     <section className={"relative overflow-hidden " + (on ? "hero-on" : "")}>
@@ -17,7 +23,7 @@ function HeroLanding({ onCTA }) {
         </div>
 
         <h1 className="hero-step-1 mt-7 font-black tracking-tighter leading-[0.95] text-5xl sm:text-6xl md:text-7xl max-w-4xl mx-auto" style={{ textWrap: "balance" }}>
-          Scripts that <span className="italic-accent shine">feel</span> different.
+          {headline.lead}<span className="italic-accent shine">{headline.accent}</span>{headline.tail}
         </h1>
 
         <p className="hero-step-2 mt-7 text-[15px] md:text-[17px] text-[var(--fg-muted)] max-w-xl mx-auto leading-relaxed">
@@ -438,7 +444,7 @@ function FAQSection() {
                   <span className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-white/70"></span>
                 </span>
               </summary>
-              <div className="px-6 pb-5 text-[13.5px] text-[var(--fg-muted)] leading-relaxed max-w-2xl">
+              <div className="px-6 pb-5 text-[13.5px] text-white/85 leading-relaxed max-w-2xl">
                 {f.a}
               </div>
             </details>

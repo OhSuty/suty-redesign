@@ -218,6 +218,20 @@ const FRAMEWORK_META = {
   }
 };
 
+// Hero headline rotation — one is picked at random each time the landing
+// page mounts. Format: { lead, accent, tail }. The `accent` word renders
+// in the italic red shine style.
+const HEADLINES = [
+  { lead: "Scripts that ",        accent: "feel",          tail: " different." },
+  { lead: "Scripts that just ",   accent: "work",          tail: "." },
+  { lead: "Built for ",           accent: "real",          tail: " servers." },
+  { lead: "Made for the ",        accent: "community",     tail: "." },
+  { lead: "Scripts that ",        accent: "ship",          tail: ", not slip." },
+  { lead: "Hand-built, ",         accent: "battle-tested", tail: "." },
+  { lead: "Premium without the ", accent: "markup",        tail: "." },
+  { lead: "The way FiveM ",       accent: "should",        tail: " feel." }
+];
+
 // Mirrors suty.dev/components/faq.tsx — same six questions, same answers.
 const FAQS = [
   {
@@ -263,6 +277,6 @@ function avatarStyle(name){
 }
 
 Object.assign(window, {
-  SCRIPTS, SUBSCRIPTIONS, BUYERS, CATEGORIES, FRAMEWORK_LABEL, FRAMEWORK_META, FAQS,
+  SCRIPTS, SUBSCRIPTIONS, BUYERS, CATEGORIES, FRAMEWORK_LABEL, FRAMEWORK_META, FAQS, HEADLINES,
   avatarStyle, nameHues
 });
