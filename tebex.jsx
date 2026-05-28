@@ -6,6 +6,7 @@ const TEBEX_TOKEN  = "ozf2-6e478a04ed7106b15e7339397e5f3a406f8dde3b";
 const TEBEX_API    = "https://headless.tebex.io/api";
 const DISCORD_URL  = "https://discord.gg/suty";
 const STORAGE_KEY  = "suty.basketIdent";
+const PENDING_KEY  = "suty.pendingPackage";
 
 // ── Utilities ────────────────────────────────────────────────────────
 // Use DOMParser (not innerHTML) — parses HTML inertly without executing
@@ -312,6 +313,7 @@ window.Tebex = {
   API: TEBEX_API,
   DISCORD_URL,
   STORAGE_KEY,
+  PENDING_KEY,
   fetchPackages,
   createBasket,
   getBasket,

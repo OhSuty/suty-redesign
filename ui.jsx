@@ -174,34 +174,32 @@ function CartProvider({ children }) {
   // Serialise addItem calls so server sees them in order.
   const addQueueRef = useRef(Promise.resolve());
 
-  // Hydrate from localStorage on mount
-  useEffect(() => {
+  // Manual refresh — used after FiveM auth return and from focus listener
+  const refreshBasket = useCallback(async () => {
     const ident = localStorage.getItem(Tebex.STORAGE_KEY);
-    if (!ident) return;
-    Tebex.getBasket(ident).then((b) => {
-      if (b && !b.complete) setBasket(b);
-      else localStorage.removeItem(Tebex.STORAGE_KEY);
-    }).catch(() => { /* network blip — leave alone */ });
+    if (!ident) { setBasket(null); return null; }
+    try {
+      const b = await Tebex.getBasket(ident);
+      if (b && !b.complete) { setBasket(b); return b; }
+      localStorage.removeItem(Tebex.STORAGE_KEY);
+      setBasket(null);
+      return null;
+    } catch { return null; }
   }, []);
+
+  // Hydrate from localStorage on mount
+  useEffect(() => { refreshBasket(); }, [refreshBasket]);
 
   // Refresh on tab focus (catches return-from-FiveM-auth)
   useEffect(() => {
-    const refresh = () => {
-      const ident = localStorage.getItem(Tebex.STORAGE_KEY);
-      if (!ident) return;
-      Tebex.getBasket(ident).then((b) => {
-        if (b && !b.complete) setBasket(b);
-        else { localStorage.removeItem(Tebex.STORAGE_KEY); setBasket(null); }
-      }).catch(() => {});
-    };
-    const onVis = () => { if (document.visibilityState === "visible") refresh(); };
-    window.addEventListener("focus", refresh);
+    const onVis = () => { if (document.visibilityState === "visible") refreshBasket(); };
+    window.addEventListener("focus", refreshBasket);
     document.addEventListener("visibilitychange", onVis);
     return () => {
-      window.removeEventListener("focus", refresh);
+      window.removeEventListener("focus", refreshBasket);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, []);
+  }, [refreshBasket]);
 
   // Once real basket catches up to optimistic count, clear it
   useEffect(() => {
@@ -248,7 +246,9 @@ function CartProvider({ children }) {
           setBasket(updated);
         } catch (err) {
           if (err && err.requiresAuth) {
-            // FiveM auth required → redirect through Tebex
+            // FiveM auth required → stash the package id we were trying to add
+            // and redirect through Tebex. On return (?fivem=return) we'll re-add it.
+            try { localStorage.setItem(Tebex.PENDING_KEY, String(script.id)); } catch {}
             const returnUrl = `${window.location.origin}/?fivem=return`;
             const authUrls = await Tebex.getBasketAuthUrls(b.ident, returnUrl);
             const fivem = (authUrls || []).find(
@@ -271,6 +271,16 @@ function CartProvider({ children }) {
     addQueueRef.current = next.catch(() => undefined);
     return next;
   }, [ensureBasket]);
+
+  // Hard-clear the local basket — used after a successful checkout
+  const clearLocal = useCallback(() => {
+    try { localStorage.removeItem(Tebex.STORAGE_KEY); } catch {}
+    try { localStorage.removeItem(Tebex.PENDING_KEY); } catch {}
+    basketCreationRef.current = null;
+    setBasket(null);
+    setOptimisticAdds(0);
+    setError(null);
+  }, []);
 
   const removeById = useCallback(async (packageId) => {
     if (!basket) return;
@@ -314,12 +324,13 @@ function CartProvider({ children }) {
 
   const value = useMemo(() => ({
     items, add, remove, removeById,
+    refreshBasket, clearLocal,
     bumpKey, count,
     basket, loading, error,
     checkoutUrl: basket && basket.links && basket.links.checkout,
     currency: (basket && basket.currency) || "USD",
     total: (basket && basket.total_price) || 0
-  }), [items, add, remove, removeById, bumpKey, count, basket, loading, error]);
+  }), [items, add, remove, removeById, refreshBasket, clearLocal, bumpKey, count, basket, loading, error]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
@@ -421,6 +432,42 @@ function FivemButton() {
         aria-hidden
       />
     </button>
+  );
+}
+
+// ── Toast — small bottom-right banner for ephemeral feedback ──────────
+function Toast({ open, onClose, tone = "success", title, children }) {
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => onClose && onClose(), 6500);
+    return () => clearTimeout(t);
+  }, [open, onClose]);
+  if (!open) return null;
+  const accentBorder =
+    tone === "success" ? "border-[rgba(74,222,128,0.45)]" :
+    tone === "cancel"  ? "border-[rgba(251,191,36,0.45)]" :
+    "border-[rgba(248,113,113,0.45)]";
+  const accentDot =
+    tone === "success" ? "bg-[#86efac]" :
+    tone === "cancel"  ? "bg-[#fde68a]" :
+    "bg-[#fca5a5]";
+  return (
+    <div className={"fixed bottom-5 right-5 z-[70] w-[min(90vw,360px)] card rounded-xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.6)] border " + accentBorder}>
+      <div className="flex items-start gap-3">
+        <span className={"mt-1.5 h-2 w-2 rounded-full shrink-0 " + accentDot} aria-hidden />
+        <div className="min-w-0 flex-1">
+          {title && <div className="font-semibold text-[14px] text-white">{title}</div>}
+          {children && <div className="mt-1 text-[12.5px] text-[var(--fg-muted)] leading-relaxed">{children}</div>}
+        </div>
+        <button
+          onClick={onClose}
+          aria-label="Dismiss"
+          className="h-6 w-6 grid place-items-center rounded-md text-white/50 hover:text-white hover:bg-white/[0.05] transition"
+        >
+          <Icon name="x" size={12} />
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -750,5 +797,5 @@ Object.assign(window, {
   Icon, SectionEyebrow, Chip, ButtonPrimary, ButtonGhost,
   Reveal, useReveal, FrameworkBadge, CartProvider, useCart,
   Avatar, Logo, Header, Footer, CartDrawer, NAV_ITEMS,
-  DiscordButton, FivemButton, DiscordLogo, MobileMenu
+  DiscordButton, FivemButton, DiscordLogo, MobileMenu, Toast
 });
