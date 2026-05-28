@@ -206,7 +206,6 @@ function FrameworkSection({ scripts }) {
           {order.map((f, i) => {
             const meta = FRAMEWORK_META[f];
             if (!meta) return null;
-            const count = list.filter(s => s.frameworks.includes(f)).length;
             return (
               <Reveal key={f} delay={i * 140}>
                 <a
@@ -227,9 +226,6 @@ function FrameworkSection({ scripts }) {
                   <div className="text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-white transition-colors group-hover:text-[var(--accent-hover)]">
                     {meta.label}
                   </div>
-                  <div className="text-[10px] uppercase tracking-[0.22em] text-[var(--fg-muted)]">
-                    {count} {count === 1 ? "script" : "scripts"}
-                  </div>
                 </a>
               </Reveal>
             );
@@ -240,8 +236,68 @@ function FrameworkSection({ scripts }) {
   );
 }
 
+// Live recent purchases — fetched from suty.dev's /api/recent-payments
+// (CORS-allowlisted on the main site for this preview origin).
+const RECENT_PAYMENTS_URL = "https://suty.dev/api/recent-payments?limit=8";
+
+function timeAgo(iso) {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return "";
+  const diff = Date.now() - then;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${d}d`;
+  return new Date(iso).toLocaleDateString();
+}
+
+function RealAvatar({ name, avatarUrl, size = 36 }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImage = !!avatarUrl && !imgFailed;
+  if (showImage) {
+    return (
+      <img
+        src={avatarUrl}
+        alt=""
+        loading="lazy"
+        onError={() => setImgFailed(true)}
+        className="rounded-full object-cover"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+  return <Avatar name={name} size={size} />;
+}
+
 function RecentPurchases() {
+  const [payments, setPayments] = useState(null); // null = loading, [] = empty
   const ref = useReveal({ stagger: 40 });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(RECENT_PAYMENTS_URL, { cache: "no-store" })
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data) => {
+        if (cancelled) return;
+        setPayments(Array.isArray(data && data.payments) ? data.payments : []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Fall back to mock buyers so the section still renders if the API is down
+        setPayments(BUYERS.map((b, i) => ({
+          id: `mock-${i}`,
+          player: b.name,
+          avatarUrl: null,
+          date: new Date(Date.now() - parseMockTime(b.time) * 60000).toISOString(),
+          packages: [{ name: b.script }],
+        })));
+      });
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <section className="relative py-20">
       <div className="max-w-3xl mx-auto px-6">
@@ -254,28 +310,68 @@ function RecentPurchases() {
           </div>
         </Reveal>
 
-        <ul ref={ref} className="card rounded-xl divide-y divide-[var(--border)] overflow-hidden">
-          {BUYERS.map((b, i) => (
-            <li key={i} className="reveal flex items-center gap-4 px-5 py-4 hover:bg-white/[0.015] transition">
-              <Avatar name={b.name} size={36} />
-              <div className="flex-1 min-w-0">
-                <div className="text-[13.5px]">
-                  <span className="font-semibold text-white">{b.name}</span>
-                  <span className="text-[var(--fg-muted)]"> picked up </span>
-                  <span className="font-semibold text-white/90 hover-underline cursor-pointer">{b.script}</span>
+        {payments === null ? (
+          <ul className="card rounded-xl divide-y divide-[var(--border)] overflow-hidden">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <li key={i} className="flex items-center gap-4 px-5 py-4">
+                <div className="skeleton h-9 w-9 rounded-full" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="skeleton h-3.5 w-44 rounded" />
+                  <div className="skeleton h-2.5 w-28 rounded" />
                 </div>
-                <div className="text-[11px] text-[var(--fg-dim)] mt-0.5 flex items-center gap-1.5">
-                  <Icon name="shopping-bag" size={10} />
-                  Tebex purchase · paid in full
-                </div>
-              </div>
-              <div className="text-[11px] text-[var(--fg-dim)] font-mono">{b.time} ago</div>
-            </li>
-          ))}
-        </ul>
+                <div className="skeleton h-3 w-8 rounded-full" />
+              </li>
+            ))}
+          </ul>
+        ) : payments.length === 0 ? (
+          <div className="card rounded-xl px-6 py-10 text-center text-sm text-[var(--fg-muted)]">
+            No recent purchases — be the first 🎉
+          </div>
+        ) : (
+          <ul ref={ref} className="card rounded-xl divide-y divide-[var(--border)] overflow-hidden">
+            {payments.map((p, i) => {
+              const pkg = p.packages && p.packages[0];
+              return (
+                <li key={p.id || i} className="reveal flex items-center gap-4 px-5 py-4 hover:bg-white/[0.015] transition">
+                  <RealAvatar name={p.player} avatarUrl={p.avatarUrl} size={36} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13.5px] truncate">
+                      <span className="font-semibold text-white">{p.player}</span>
+                      <span className="text-[var(--fg-muted)]"> picked up </span>
+                      {pkg && (
+                        <span className="font-semibold text-white/90">
+                          {pkg.name}
+                          {p.packages.length > 1 && (
+                            <span className="ml-1.5 text-[10px] rounded bg-[rgba(153,27,27,0.18)] px-1.5 py-px font-bold text-[var(--accent-hover)] align-middle">
+                              +{p.packages.length - 1}
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-[var(--fg-dim)] mt-0.5 flex items-center gap-1.5">
+                      <Icon name="shopping-bag" size={10} />
+                      Tebex purchase · paid in full
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-[var(--fg-dim)] font-mono">{timeAgo(p.date)} ago</div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </section>
   );
+}
+
+// "2m", "14m", "1h", "3h", "1d" → number of minutes (for mock fallback)
+function parseMockTime(s) {
+  const n = parseInt(s, 10);
+  if (!Number.isFinite(n)) return 0;
+  if (s.endsWith("h")) return n * 60;
+  if (s.endsWith("d")) return n * 60 * 24;
+  return n;
 }
 
 function FAQSection() {
