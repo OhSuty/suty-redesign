@@ -333,22 +333,16 @@ function Avatar({ name, size = 36 }) {
   );
 }
 
-// ── Logo ───────────────────────────────────────────────────────────────
-function Logo({ size = 32, withWord = false }) {
+// ── Logo — official suty.dev wordmark image ────────────────────────────
+function Logo({ size = 40 }) {
   return (
-    <div className="inline-flex items-center gap-2.5">
-      <div className="relative" style={{ width: size, height: size }}>
-        <div
-          className="absolute inset-0 rounded-[8px]"
-          style={{
-            background: "linear-gradient(160deg, #c41e1e 0%, #7a1313 60%, #3b0707 100%)",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -8px 12px rgba(0,0,0,0.45), 0 4px 14px rgba(153,27,27,0.35)"
-          }}
-        />
-        <div className="absolute inset-0 grid place-items-center font-black text-white" style={{ fontSize: size * 0.58, letterSpacing: "-0.04em" }}>S</div>
-      </div>
-      {withWord && <span className="font-semibold tracking-tight text-[15px]">Suty</span>}
-    </div>
+    <img
+      src="/suty.png"
+      alt="Suty"
+      style={{ height: size, width: "auto" }}
+      className="block select-none"
+      draggable={false}
+    />
   );
 }
 
@@ -373,9 +367,8 @@ function Header({ page, setPage, onOpenCart }) {
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-black/70 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <button onClick={() => setPage("home")} className="flex items-center gap-2.5 group">
-          <Logo size={28} />
-          <span className="font-semibold tracking-tight text-[15px] text-white/90 group-hover:text-white transition">Suty</span>
+        <button onClick={() => setPage("home")} className="flex items-center group" aria-label="Suty — home">
+          <Logo size={40} />
         </button>
 
         <nav className="hidden md:flex items-center pill-nav rounded-full p-1">
@@ -422,7 +415,7 @@ function Footer({ setPage }) {
     <footer className="border-t border-[var(--border)] mt-32">
       <div className="max-w-7xl mx-auto px-6 py-16 grid md:grid-cols-4 gap-12">
         <div className="md:col-span-2">
-          <Logo size={32} withWord />
+          <Logo size={56} />
           <p className="mt-4 text-sm text-[var(--fg-muted)] max-w-sm leading-relaxed">
             Premium FiveM scripts built for communities that care about how things <span className="italic text-white/90">feel</span>.
           </p>
