@@ -83,42 +83,49 @@ function ProductCard({ script, onAdd, onOpen, compact = false }) {
         </div>
       </div>
 
-      {/* Body */}
-      <div className="p-5 flex-1 flex flex-col">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="font-bold tracking-tight text-[15px] leading-snug">{script.displayName || script.name}</h3>
-          <div className="flex items-center gap-1 text-[var(--fg-muted)] text-xs whitespace-nowrap">
+      {/* Body — compact on phone (2-col grid), full on sm+ */}
+      <div className="p-3 sm:p-5 flex-1 flex flex-col">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-bold tracking-tight text-[13px] sm:text-[15px] leading-snug line-clamp-2 min-h-[2.2rem] sm:min-h-[2.6rem]">
+            {script.displayName || script.name}
+          </h3>
+          <div className="hidden sm:flex items-center gap-1 text-[var(--fg-muted)] text-xs whitespace-nowrap">
             <Icon name="star" size={12} />
             <span className="font-mono">4.9</span>
           </div>
         </div>
 
-        <p className="mt-2 text-[13px] text-[var(--fg-muted)] leading-relaxed line-clamp-2">{script.description}</p>
+        {/* Description hidden on phone — too cramped at 2 cards/row */}
+        <p className="hidden sm:block mt-2 text-[13px] text-[var(--fg-muted)] leading-relaxed line-clamp-2">{script.description}</p>
 
-        <div className="mt-4 flex items-center gap-1.5">
+        {/* Framework badges — keep small on phone */}
+        <div className="mt-3 sm:mt-4 flex items-center gap-1 sm:gap-1.5 flex-wrap min-h-[22px] sm:min-h-[26px]">
           {script.frameworks.map((f) => <FrameworkBadge key={f} kind={f} />)}
         </div>
 
-        <div className="mt-5 pt-5 border-t border-[var(--border)] flex items-end justify-between gap-3">
-          <div>
-            <div className="text-2xl font-bold tracking-tight tabular-nums">
+        <div className="mt-3 sm:mt-5 pt-3 sm:pt-5 border-t border-[var(--border)] flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            <div className="text-lg sm:text-2xl font-bold tracking-tight tabular-nums">
               {Tebex.formatPrice(script.price, script.currency)}
-              {isSub && <span className="text-[var(--fg-muted)] text-xs font-normal ml-1">/ month</span>}
+              {isSub && <span className="text-[var(--fg-muted)] text-[10px] sm:text-xs font-normal ml-0.5 sm:ml-1">/ mo</span>}
             </div>
-            <div className="text-[11px] text-[var(--fg-dim)] mt-0.5">{isSub ? "Cancel anytime" : "Lifetime updates · escrow"}</div>
+            <div className="hidden sm:block text-[11px] text-[var(--fg-dim)] mt-0.5">
+              {isSub ? "Cancel anytime" : "Lifetime updates · escrow"}
+            </div>
           </div>
           <button
             data-stop-card-click
             onClick={onAddClick}
             disabled={added}
-            className={"inline-flex items-center gap-2 px-4 h-10 rounded-md text-[13px] font-semibold transition-all " + (
+            aria-label={added ? "Added" : `Add ${script.displayName} to cart`}
+            className={"inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-4 h-8 sm:h-10 rounded-md text-[11px] sm:text-[13px] font-semibold transition-all shrink-0 " + (
               added
                 ? "bg-[rgba(74,222,128,0.18)] text-[#86efac] border border-[rgba(74,222,128,0.45)]"
                 : "btn-primary"
             )}
           >
-            <Icon name={added ? "check" : "plus"} size={14} />
-            {added ? "Added" : "Add"}
+            <Icon name={added ? "check" : "plus"} size={12} />
+            <span>{added ? "Added" : "Add"}</span>
           </button>
         </div>
       </div>
@@ -235,7 +242,7 @@ function ProductGrid({ scripts, onAdd, onOpen, columns = 3 }) {
   const ref = useReveal({ stagger: 70 });
   const cls = columns === 3 ? "md:grid-cols-3" : columns === 2 ? "md:grid-cols-2" : "md:grid-cols-4";
   return (
-    <div ref={ref} className={`grid grid-cols-1 sm:grid-cols-2 ${cls} gap-5`}>
+    <div ref={ref} className={`grid grid-cols-2 ${cls} gap-3 sm:gap-5`}>
       {scripts.map((s) => (
         <div key={s.id} className="reveal">
           <ProductCard script={s} onAdd={onAdd} onOpen={onOpen} />

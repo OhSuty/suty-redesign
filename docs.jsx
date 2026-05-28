@@ -81,7 +81,7 @@ function flatPageList() {
   return list;
 }
 
-function DocsContent({ pageId, onSelect }) {
+function DocsContent({ pageId, onSelect, onBack }) {
   const doc = DOCS_CONTENT[pageId] || DOCS_CONTENT[DOCS_DEFAULT_ID];
   const proseRef = useRef(null);
 
@@ -136,6 +136,17 @@ function DocsContent({ pageId, onSelect }) {
   return (
     <div className="flex-1 min-w-0 py-10 md:py-14 px-2 md:px-12">
       <div className="max-w-3xl">
+        {/* Mobile-only: "back to all docs" — desktop has the sidebar */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="mb-6 md:hidden inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.2em] text-[var(--fg-muted)] hover:text-[var(--accent-hover)] transition-colors group"
+          >
+            <Icon name="arrow-left" size={12} className="transition-transform group-hover:-translate-x-0.5" />
+            All documentation
+          </button>
+        )}
+
         <div className="flex items-center gap-2 text-[12px] text-[var(--fg-dim)] mb-6 flex-wrap">
           {doc.crumb.map((c, i) => (
             <React.Fragment key={i}>
@@ -179,8 +190,53 @@ function DocsContent({ pageId, onSelect }) {
   );
 }
 
+// ── Docs index — welcome view, shown when no specific page is selected ──
+// Replaces the old "jump straight to Tap Pay" default. User picks a script
+// first; sidebar still works as a fast switcher on desktop.
+function DocsIndex({ onSelect }) {
+  return (
+    <div className="flex-1 min-w-0 py-10 md:py-14 px-2 md:px-12">
+      <div className="max-w-3xl">
+        <SectionEyebrow>Documentation</SectionEyebrow>
+        <h1 className="mt-3 font-black tracking-tighter leading-[0.95] text-4xl md:text-5xl">
+          Pick a <span className="italic-accent shine">script</span>.
+        </h1>
+        <p className="mt-5 text-[15px] text-[var(--fg-muted)] max-w-md leading-relaxed">
+          Each script ships with an overview, install guide, configuration reference, and a troubleshooting page. Tap one to start reading.
+        </p>
+
+        <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {DOCS_TREE.map((folder) => {
+            const firstPage = folder.pages && folder.pages[0];
+            if (!firstPage) return null;
+            return (
+              <button
+                key={folder.id}
+                onClick={() => onSelect(firstPage.id)}
+                className="card card-lift rounded-xl p-5 text-left group"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold text-[15px] truncate group-hover:text-[var(--accent-hover)] transition-colors">
+                      {folder.title}
+                    </div>
+                    <div className="mt-1 text-[11px] uppercase tracking-[0.22em] text-[var(--fg-muted)]">
+                      {folder.pages.length} {folder.pages.length === 1 ? "page" : "pages"}
+                    </div>
+                  </div>
+                  <Icon name="arrow-right" size={14} className="mt-1 text-[var(--fg-muted)] transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--accent-hover)]" />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DocsPage() {
-  const [active, setActive] = useState(DOCS_DEFAULT_ID);
+  const [active, setActive] = useState(null); // null = welcome index view
   const [query, setQuery] = useState("");
   // Reset scroll on doc change
   useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" }); }, [active]);
@@ -189,7 +245,10 @@ function DocsPage() {
     <div className="max-w-7xl mx-auto px-6">
       <div className="flex">
         <DocsSidebar active={active} onSelect={setActive} query={query} setQuery={setQuery} />
-        <DocsContent pageId={active} onSelect={setActive} />
+        {active
+          ? <DocsContent pageId={active} onSelect={setActive} onBack={() => setActive(null)} />
+          : <DocsIndex onSelect={setActive} />
+        }
       </div>
     </div>
   );
