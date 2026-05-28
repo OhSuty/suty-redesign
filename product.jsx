@@ -77,10 +77,10 @@ function ProductCard({ script, onAdd, compact = false }) {
         <div className="mt-5 pt-5 border-t border-[var(--border)] flex items-end justify-between gap-3">
           <div>
             <div className="text-2xl font-bold tracking-tight tabular-nums">
-              ${script.price.toFixed(2)}
+              {Tebex.formatPrice(script.price, script.currency)}
               {isSub && <span className="text-[var(--fg-muted)] text-xs font-normal ml-1">/ month</span>}
             </div>
-            <div className="text-[11px] text-[var(--fg-dim)] mt-0.5">Lifetime updates · escrow</div>
+            <div className="text-[11px] text-[var(--fg-dim)] mt-0.5">{isSub ? "Cancel anytime" : "Lifetime updates · escrow"}</div>
           </div>
           <button
             onClick={() => onAdd && onAdd(script)}
@@ -96,7 +96,9 @@ function ProductCard({ script, onAdd, compact = false }) {
 }
 
 // Featured product card (taller, used in subscriptions hero)
-function FeaturedSubscriptionCard({ sub, onAdd }) {
+function FeaturedSubscriptionCard({ sub, allScripts, onAdd }) {
+  if (!sub) return null;
+  const list = allScripts || [];
   return (
     <article className="card card-lift relative rounded-2xl overflow-hidden">
       {/* Decorative spotlight */}
@@ -113,38 +115,42 @@ function FeaturedSubscriptionCard({ sub, onAdd }) {
           </div>
 
           <h3 className="mt-6 font-black tracking-tighter leading-[0.95] text-5xl md:text-6xl">
-            All <span className="italic-accent shine">Access</span>
+            <span className="italic-accent shine">{sub.displayName || sub.name}</span>
           </h3>
           <p className="mt-5 text-[15px] text-[var(--fg-muted)] max-w-md leading-relaxed">
-            Every Suty script ever shipped — plus everything we drop next. One subscription, no per-script math.
+            {sub.description || "Every Suty script ever shipped — plus everything we drop next. One subscription, no per-script math."}
           </p>
 
           <div className="mt-8 flex items-end gap-2">
-            <div className="text-5xl font-black tracking-tighter tabular-nums">${sub.price.toFixed(2)}</div>
+            <div className="text-5xl font-black tracking-tighter tabular-nums">{Tebex.formatPrice(sub.price, sub.currency)}</div>
             <div className="pb-2 text-sm text-[var(--fg-muted)]">/ month</div>
           </div>
-          <div className="text-xs text-[var(--fg-dim)] mt-1">Includes {sub.includes} scripts · cancel anytime</div>
+          <div className="text-xs text-[var(--fg-dim)] mt-1">{list.length > 0 ? `Includes ${list.length} scripts · ` : ""}cancel anytime</div>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
-            <ButtonPrimary onClick={() => onAdd && onAdd({ id: sub.id, displayName: sub.name + " — monthly", price: sub.price })} icon={<Icon name="arrow-right" size={14} />}>
+            <ButtonPrimary onClick={() => onAdd && onAdd(sub)} icon={<Icon name="arrow-right" size={14} />}>
               Subscribe
             </ButtonPrimary>
             <ButtonGhost>See what’s included</ButtonGhost>
           </div>
         </div>
 
-        <ul className="grid grid-cols-2 gap-3 self-center">
-          {SCRIPTS.slice(0, 8).map((s) => (
-            <li key={s.id} className="flex items-center gap-2.5 px-3 py-2.5 rounded-md bg-black/40 border border-[var(--border)]">
-              <Icon name="check" size={12} className="text-[var(--accent-hover)]" />
-              <span className="text-[13px] truncate">{s.displayName}</span>
-            </li>
-          ))}
-          <li className="col-span-2 flex items-center gap-2.5 px-3 py-2.5 rounded-md bg-black/40 border border-[var(--border)]">
-            <Icon name="sparkles" size={12} className="text-[var(--accent-hover)]" />
-            <span className="text-[13px] text-[var(--fg-muted)]">+ {SCRIPTS.length - 8} more, plus every future drop</span>
-          </li>
-        </ul>
+        {list.length > 0 && (
+          <ul className="grid grid-cols-2 gap-3 self-center">
+            {list.slice(0, 8).map((s) => (
+              <li key={s.id} className="flex items-center gap-2.5 px-3 py-2.5 rounded-md bg-black/40 border border-[var(--border)]">
+                <Icon name="check" size={12} className="text-[var(--accent-hover)]" />
+                <span className="text-[13px] truncate">{s.displayName}</span>
+              </li>
+            ))}
+            {list.length > 8 && (
+              <li className="col-span-2 flex items-center gap-2.5 px-3 py-2.5 rounded-md bg-black/40 border border-[var(--border)]">
+                <Icon name="sparkles" size={12} className="text-[var(--accent-hover)]" />
+                <span className="text-[13px] text-[var(--fg-muted)]">+ {list.length - 8} more, plus every future drop</span>
+              </li>
+            )}
+          </ul>
+        )}
       </div>
     </article>
   );
@@ -155,18 +161,15 @@ function SubscriptionCard({ sub, onAdd }) {
     <article className="card card-lift rounded-xl p-7 flex flex-col">
       <div className="flex items-center justify-between">
         <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--fg-muted)]">Bundle</div>
-        <div className="font-mono text-[11px] text-[var(--fg-dim)]">{sub.includes} scripts</div>
       </div>
-      <h4 className="mt-5 text-2xl font-bold tracking-tight">{sub.name}</h4>
-      <p className="mt-2 text-[13px] text-[var(--fg-muted)] leading-relaxed">{sub.description}</p>
+      <h4 className="mt-5 text-2xl font-bold tracking-tight">{sub.displayName || sub.name}</h4>
+      <p className="mt-2 text-[13px] text-[var(--fg-muted)] leading-relaxed line-clamp-3">{sub.description}</p>
       <div className="mt-6 pt-6 border-t border-[var(--border)] flex items-end justify-between">
         <div>
-          <div className="text-3xl font-bold tracking-tighter tabular-nums">${sub.price.toFixed(2)}</div>
+          <div className="text-3xl font-bold tracking-tighter tabular-nums">{Tebex.formatPrice(sub.price, sub.currency)}</div>
           <div className="text-[11px] text-[var(--fg-dim)] mt-0.5">/ month</div>
         </div>
-        <ButtonPrimary onClick={() => onAdd && onAdd({ id: sub.id, displayName: sub.name + " — monthly", price: sub.price })}>
-          Subscribe
-        </ButtonPrimary>
+        <ButtonPrimary onClick={() => onAdd && onAdd(sub)}>Subscribe</ButtonPrimary>
       </div>
     </article>
   );

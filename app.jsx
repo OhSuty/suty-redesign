@@ -36,9 +36,11 @@ function App() {
 
 function Root() {
   return (
-    <CartProvider>
-      <App />
-    </CartProvider>
+    <ScriptsProvider>
+      <CartProvider>
+        <App />
+      </CartProvider>
+    </ScriptsProvider>
   );
 }
 

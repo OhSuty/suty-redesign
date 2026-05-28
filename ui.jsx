@@ -123,20 +123,165 @@ function FrameworkBadge({ kind, size = "sm", className = "" }) {
   );
 }
 
-// ── Cart context ───────────────────────────────────────────────────────
+// ── Cart context (real Tebex basket) ───────────────────────────────────
 const CartContext = createContext(null);
 function CartProvider({ children }) {
-  const [items, setItems] = useState([]);
-  const [bumpKey, setBumpKey] = useState(0);
+  const [basket, setBasket]               = useState(null);
+  const [loading, setLoading]             = useState(false);
+  const [error, setError]                 = useState(null);
+  const [optimisticAdds, setOptimisticAdds] = useState(0);
+  const [bumpKey, setBumpKey]             = useState(0);
 
-  const add = useCallback((script) => {
-    setItems((prev) => [...prev, { id: script.id, name: script.displayName || script.name, price: script.price, addedAt: Date.now() }]);
+  // Promise-singleton for basket creation: prevents duplicate baskets
+  // when the user spam-clicks Add before the first basket finishes.
+  const basketCreationRef = useRef(null);
+  // Serialise addItem calls so server sees them in order.
+  const addQueueRef = useRef(Promise.resolve());
+
+  // Hydrate from localStorage on mount
+  useEffect(() => {
+    const ident = localStorage.getItem(Tebex.STORAGE_KEY);
+    if (!ident) return;
+    Tebex.getBasket(ident).then((b) => {
+      if (b && !b.complete) setBasket(b);
+      else localStorage.removeItem(Tebex.STORAGE_KEY);
+    }).catch(() => { /* network blip — leave alone */ });
+  }, []);
+
+  // Refresh on tab focus (catches return-from-FiveM-auth)
+  useEffect(() => {
+    const refresh = () => {
+      const ident = localStorage.getItem(Tebex.STORAGE_KEY);
+      if (!ident) return;
+      Tebex.getBasket(ident).then((b) => {
+        if (b && !b.complete) setBasket(b);
+        else { localStorage.removeItem(Tebex.STORAGE_KEY); setBasket(null); }
+      }).catch(() => {});
+    };
+    const onVis = () => { if (document.visibilityState === "visible") refresh(); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
+
+  // Once real basket catches up to optimistic count, clear it
+  useEffect(() => {
+    if (optimisticAdds === 0 || !basket) return;
+    const real = (basket.packages || []).reduce(
+      (s, p) => s + ((p.in_basket && p.in_basket.quantity) || p.quantity || 1), 0
+    );
+    if (real > 0) setOptimisticAdds(0);
+  }, [basket, optimisticAdds]);
+
+  const ensureBasket = useCallback(async () => {
+    if (basket) return basket;
+    if (basketCreationRef.current) return basketCreationRef.current;
+    basketCreationRef.current = (async () => {
+      try {
+        const b = await Tebex.createBasket();
+        localStorage.setItem(Tebex.STORAGE_KEY, b.ident);
+        setBasket(b);
+        return b;
+      } catch (err) {
+        basketCreationRef.current = null;
+        throw err;
+      }
+    })();
+    return basketCreationRef.current;
+  }, [basket]);
+
+  const add = useCallback(async (script) => {
+    // Mock-script ids are strings like "mock-queue" — can't be added to Tebex
+    if (typeof script.id !== "number") {
+      setError("Live catalogue isn't available right now — try again in a sec.");
+      return;
+    }
+    setOptimisticAdds((n) => n + 1);
     setBumpKey((k) => k + 1);
-  }, []);
+
+    const work = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const b = await ensureBasket();
+        try {
+          const updated = await Tebex.addPackageToBasket(b.ident, script.id, 1);
+          setBasket(updated);
+        } catch (err) {
+          if (err && err.requiresAuth) {
+            // FiveM auth required → redirect through Tebex
+            const returnUrl = `${window.location.origin}/?fivem=return`;
+            const authUrls = await Tebex.getBasketAuthUrls(b.ident, returnUrl);
+            const fivem = (authUrls || []).find(
+              (u) => u.name && u.name.toLowerCase() === "fivem"
+            ) || (authUrls || [])[0];
+            if (fivem && fivem.url) { window.location.href = fivem.url; return; }
+            throw new Error("No authentication provider available for this basket.");
+          }
+          throw err;
+        }
+      } catch (err) {
+        setOptimisticAdds((n) => Math.max(0, n - 1));
+        setError((err && err.message) || String(err));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const next = addQueueRef.current.then(() => work(), () => work());
+    addQueueRef.current = next.catch(() => undefined);
+    return next;
+  }, [ensureBasket]);
+
+  const removeById = useCallback(async (packageId) => {
+    if (!basket) return;
+    setLoading(true);
+    try {
+      const updated = await Tebex.removePackageFromBasket(basket.ident, packageId);
+      setBasket(updated);
+    } catch (err) {
+      setError((err && err.message) || String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [basket]);
+
+  // Legacy idx-based remove (CartDrawer calls remove(i))
   const remove = useCallback((idx) => {
-    setItems((prev) => prev.filter((_, i) => i !== idx));
-  }, []);
-  const value = useMemo(() => ({ items, add, remove, bumpKey, count: items.length }), [items, add, remove, bumpKey]);
+    if (!basket || !basket.packages[idx]) return;
+    return removeById(basket.packages[idx].id);
+  }, [basket, removeById]);
+
+  const items = useMemo(() => {
+    if (!basket) return [];
+    return basket.packages.map((p) => ({
+      id: p.id,
+      name: Tebex.cleanProductName(p.name),
+      price: ((p.in_basket && p.in_basket.price) || 0) *
+             ((p.in_basket && p.in_basket.quantity) || p.quantity || 1)
+    }));
+  }, [basket]);
+
+  const realCount = useMemo(() => {
+    if (!basket) return 0;
+    return basket.packages.reduce(
+      (s, p) => s + ((p.in_basket && p.in_basket.quantity) || p.quantity || 1), 0
+    );
+  }, [basket]);
+  const count = Math.max(realCount, realCount + optimisticAdds);
+
+  const value = useMemo(() => ({
+    items, add, remove, removeById,
+    bumpKey, count,
+    basket, loading, error,
+    checkoutUrl: basket && basket.links && basket.links.checkout,
+    currency: (basket && basket.currency) || "USD",
+    total: (basket && basket.total_price) || 0
+  }), [items, add, remove, removeById, bumpKey, count, basket, loading, error]);
+
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 function useCart() { return useContext(CartContext); }
@@ -213,7 +358,7 @@ function Header({ page, setPage, onOpenCart }) {
         </nav>
 
         <div className="flex items-center gap-2">
-          <a href="#" className="hidden sm:inline-flex items-center gap-2 h-9 px-3 rounded-md border border-[var(--border-2)] hover:border-[#3a3a3a] hover:bg-white/[0.03] text-[13px] text-white/85 transition">
+          <a href={Tebex.DISCORD_URL} target="_blank" rel="noopener noreferrer" className="hidden sm:inline-flex items-center gap-2 h-9 px-3 rounded-md border border-[var(--border-2)] hover:border-[#3a3a3a] hover:bg-white/[0.03] text-[13px] text-white/85 transition">
             <Icon name="message-circle" size={14} />
             Discord
           </a>
@@ -346,15 +491,34 @@ function CartDrawer({ open, onClose }) {
 
         {cart.items.length > 0 && (
           <div className="border-t border-[var(--border)] p-6 space-y-4">
+            {cart.error && (
+              <div className="rounded-md border border-[rgba(153,27,27,0.4)] bg-[rgba(153,27,27,0.08)] p-3 text-[12px] text-[#fca5a5]">
+                {cart.error}
+              </div>
+            )}
             <div className="flex items-center justify-between text-sm">
               <span className="text-[var(--fg-muted)]">Subtotal</span>
-              <span className="font-mono">${total.toFixed(2)}</span>
+              <span className="font-mono">{Tebex.formatPrice(cart.total, cart.currency)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-base font-semibold">Total</span>
-              <span className="text-xl font-bold">${total.toFixed(2)} <span className="text-[var(--fg-muted)] text-xs font-normal ml-1">USD</span></span>
+              <span className="text-xl font-bold">
+                {Tebex.formatPrice(cart.total, cart.currency)}
+                <span className="text-[var(--fg-muted)] text-xs font-normal ml-1">{cart.currency}</span>
+              </span>
             </div>
-            <ButtonPrimary className="w-full" icon={<Icon name="arrow-right" size={14} />}>Checkout</ButtonPrimary>
+            {cart.checkoutUrl ? (
+              <a
+                href={cart.checkoutUrl}
+                className="btn-primary inline-flex items-center justify-center gap-2 px-5 h-11 rounded-md text-sm font-semibold w-full"
+              >
+                Checkout <Icon name="arrow-right" size={14} />
+              </a>
+            ) : (
+              <ButtonPrimary className="w-full" disabled icon={<Icon name="loader" size={14} />}>
+                Preparing checkout…
+              </ButtonPrimary>
+            )}
             <div className="text-[11px] text-[var(--fg-dim)] text-center">Secure checkout via Tebex · all major cards</div>
           </div>
         )}
