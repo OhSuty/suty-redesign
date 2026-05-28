@@ -182,7 +182,10 @@ function adaptPackage(pkg){
     id: pkg.id, // numeric Tebex package id
     name: pkg.name,
     displayName,
-    category: mapCategory(pkg.category && pkg.category.name),
+    // Use the real Tebex category name ("Scripts" / "Free") rather than
+    // synthesising fake buckets — matches what the panel shows.
+    category: (pkg.category && pkg.category.name) || "Scripts",
+    categoryId: pkg.category && pkg.category.id,
     price: pkg.total_price,
     currency: pkg.currency,
     image: pkg.image,

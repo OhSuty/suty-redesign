@@ -476,16 +476,16 @@ function LandingPage({ onAdd, onOpen, setPage }) {
 // ── Scripts page ──────────────────────────────────────────────────────
 function ScriptsPage({ onAdd, onOpen }) {
   const { packages, loading } = useScripts();
-  const [cat, setCat] = useState("All");
-  const [framework, setFramework] = useState(null);
+  // Just two tabs — match the Tebex panel: Scripts (paid) vs Free.
+  // Anything that isn't explicitly tagged 'Free' counts as Scripts.
+  const TABS = ["Scripts", "Free"];
+  const [cat, setCat] = useState("Scripts");
 
   const all = useMemo(() => packages.filter(p => p.type !== "subscription"), [packages]);
   const list = useMemo(() => {
-    let arr = all;
-    if (cat !== "All") arr = arr.filter(s => s.category === cat);
-    if (framework) arr = arr.filter(s => s.frameworks.includes(framework));
-    return arr;
-  }, [all, cat, framework]);
+    if (cat === "Free") return all.filter(s => s.category === "Free");
+    return all.filter(s => s.category !== "Free");
+  }, [all, cat]);
 
   return (
     <React.Fragment>
@@ -509,50 +509,32 @@ function ScriptsPage({ onAdd, onOpen }) {
         </div>
       </section>
 
-      {/* toolbar */}
+      {/* toolbar — Scripts / Free, centred on phone */}
       <div className="sticky top-16 z-30 bg-black/80 backdrop-blur-md border-y border-[var(--border)]">
-        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between gap-4 overflow-x-auto">
-          <div className="flex items-center gap-1.5">
-            {CATEGORIES.map((c) => (
+        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-center sm:justify-start gap-2">
+          {TABS.map((c) => {
+            const isActive = cat === c;
+            const count = c === "Free"
+              ? all.filter(s => s.category === "Free").length
+              : all.filter(s => s.category !== "Free").length;
+            return (
               <button
                 key={c}
                 onClick={() => setCat(c)}
-                className={"h-8 px-3.5 rounded-full text-[12.5px] font-medium border transition whitespace-nowrap " +
-                  (cat === c
+                className={"h-9 px-4 rounded-full text-[13px] font-semibold border inline-flex items-center gap-2 transition whitespace-nowrap " +
+                  (isActive
                     ? "bg-[var(--accent)] border-[var(--accent)] text-white"
                     : "border-[var(--border-2)] text-[var(--fg-muted)] hover:text-white hover:border-[#3a3a3a]")
                 }
-                style={cat === c ? { boxShadow: "0 0 14px rgba(153,27,27,0.45), inset 0 1px 0 rgba(255,255,255,0.15)" } : undefined}
+                style={isActive ? { boxShadow: "0 0 14px rgba(153,27,27,0.45), inset 0 1px 0 rgba(255,255,255,0.15)" } : undefined}
               >
                 {c}
+                <span className={"text-[10px] font-mono rounded-full px-1.5 py-0.5 " + (isActive ? "bg-white/15 text-white" : "bg-white/[0.04] text-[var(--fg-dim)]")}>
+                  {count}
+                </span>
               </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] uppercase tracking-[0.2em] text-[var(--fg-dim)] mr-1 hidden sm:inline">Framework</span>
-            {["esx", "qbcore", "qbx"].map((f) => {
-              const meta = FRAMEWORK_META[f];
-              const isActive = framework === f;
-              return (
-                <button
-                  key={f}
-                  onClick={() => setFramework(isActive ? null : f)}
-                  className={"h-8 pl-1.5 pr-3 rounded-full text-[12px] font-semibold border inline-flex items-center gap-1.5 transition " +
-                    (isActive
-                      ? "border-[rgba(153,27,27,0.55)] bg-[rgba(153,27,27,0.12)] text-white"
-                      : "border-[var(--border-2)] text-[var(--fg-muted)] hover:text-white hover:border-[#3a3a3a]")
-                  }
-                >
-                  {meta && (
-                    <span className="grid place-items-center h-5 w-5 rounded-full bg-black border border-white/10">
-                      <img src={meta.image} alt="" className="h-3 w-3 object-contain" aria-hidden />
-                    </span>
-                  )}
-                  {meta ? meta.label : FRAMEWORK_LABEL[f]}
-                </button>
-              );
-            })}
-          </div>
+            );
+          })}
         </div>
       </div>
 
@@ -575,11 +557,19 @@ function ScriptsPage({ onAdd, onOpen }) {
             <div className="mx-auto h-14 w-14 grid place-items-center rounded-full border border-[var(--border-2)] mb-5 text-white/60">
               <Icon name="search-x" size={20} />
             </div>
-            <div className="font-semibold text-lg">No matches for that combo</div>
-            <p className="mt-2 text-sm text-[var(--fg-muted)] max-w-sm mx-auto">Try clearing the framework filter, or switch to <em>All</em> categories.</p>
-            <div className="mt-6 inline-flex">
-              <ButtonGhost onClick={() => { setCat("All"); setFramework(null); }}>Clear filters</ButtonGhost>
+            <div className="font-semibold text-lg">
+              {cat === "Free" ? "No free scripts yet" : "No scripts available"}
             </div>
+            <p className="mt-2 text-sm text-[var(--fg-muted)] max-w-sm mx-auto">
+              {cat === "Free"
+                ? "Free drops will land here. In the meantime, browse the full catalogue."
+                : "The Tebex API didn't return any packages — try again in a moment."}
+            </p>
+            {cat === "Free" && (
+              <div className="mt-6 inline-flex">
+                <ButtonGhost onClick={() => setCat("Scripts")}>View paid scripts</ButtonGhost>
+              </div>
+            )}
           </div>
         ) : (
           <ProductGrid scripts={list} onAdd={onAdd} onOpen={onOpen} columns={3} />

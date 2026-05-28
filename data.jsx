@@ -218,26 +218,31 @@ const FRAMEWORK_META = {
   }
 };
 
+// Mirrors suty.dev/components/faq.tsx — same six questions, same answers.
 const FAQS = [
   {
-    q: "Are your scripts encrypted?",
-    a: "Server-side logic ships open-source so you can audit and extend it. Client-side is partially escrowed with Tebex — the parts that matter for anti-leak. You won’t hit a wall."
+    q: "How do I install a script?",
+    a: "After purchase, download the ZIP from your Tebex account, extract it to your server's resources folder, add an \"ensure\" line to server.cfg, and restart. Full install docs are on the Docs page."
   },
   {
-    q: "What about updates?",
-    a: "Lifetime updates on every purchase. Patches usually land within 24h of a FiveM artifact bump, and we post changelogs in the Discord."
+    q: "Which frameworks are supported?",
+    a: "Most scripts support QBCore, QBX, and ESX out of the box. Each product page lists the supported frameworks."
+  },
+  {
+    q: "Do I get future updates?",
+    a: "Yes. Every purchase includes lifetime updates. Download the latest version anytime from your Tebex account."
+  },
+  {
+    q: "What about support?",
+    a: "Join the Discord for fastest support. We ship patches and new features regularly based on feedback."
+  },
+  {
+    q: "Can I use scripts on multiple servers?",
+    a: "The license is per-server and per-purchase. Contact us if you run a network and need multi-server licensing."
   },
   {
     q: "Refund policy?",
-    a: "If a script genuinely doesn’t do what the listing says, we’ll refund within 14 days. We won’t refund ‘changed my mind’ — but we’ll happily help you get it working."
-  },
-  {
-    q: "Can I use these on a paid server?",
-    a: "Yes. One license = one community. Re-selling, re-distributing, or shipping inside paid frameworks is not allowed."
-  },
-  {
-    q: "Do you take custom work?",
-    a: "Sometimes — through the Discord, scoped per quarter. Subscribers get priority on the slots."
+    a: "Refunds follow the Tebex policy — reach out on Discord first if anything is broken and we will make it right."
   }
 ];
 

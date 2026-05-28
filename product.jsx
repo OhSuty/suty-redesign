@@ -72,15 +72,6 @@ function ProductCard({ script, onAdd, onOpen, compact = false }) {
             New
           </div>
         )}
-
-        {/* Bottom-left category */}
-        <div className="absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.22em] text-white/70">
-          {script.category}
-        </div>
-        {/* Bottom-right price (subtle, large detail on hover) */}
-        <div className="absolute bottom-3 right-3 font-mono text-[11px] text-white/60">
-          #{String(script.id).toUpperCase()}
-        </div>
       </div>
 
       {/* Body — compact on phone (2-col grid), full on sm+ */}
