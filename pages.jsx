@@ -520,14 +520,11 @@ function ScriptsPage({ onAdd, onOpen }) {
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-center sm:justify-start gap-2">
           {TABS.map((c) => {
             const isActive = cat === c;
-            const count = c === "Free"
-              ? all.filter(s => s.category === "Free").length
-              : all.filter(s => s.category !== "Free").length;
             return (
               <button
                 key={c}
                 onClick={() => setCat(c)}
-                className={"h-9 px-4 rounded-full text-[13px] font-semibold border inline-flex items-center gap-2 transition whitespace-nowrap " +
+                className={"h-9 px-5 rounded-full text-[13px] font-semibold border transition whitespace-nowrap " +
                   (isActive
                     ? "bg-[var(--accent)] border-[var(--accent)] text-white"
                     : "border-[var(--border-2)] text-[var(--fg-muted)] hover:text-white hover:border-[#3a3a3a]")
@@ -535,9 +532,6 @@ function ScriptsPage({ onAdd, onOpen }) {
                 style={isActive ? { boxShadow: "0 0 14px rgba(153,27,27,0.45), inset 0 1px 0 rgba(255,255,255,0.15)" } : undefined}
               >
                 {c}
-                <span className={"text-[10px] font-mono rounded-full px-1.5 py-0.5 " + (isActive ? "bg-white/15 text-white" : "bg-white/[0.04] text-[var(--fg-dim)]")}>
-                  {count}
-                </span>
               </button>
             );
           })}

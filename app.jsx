@@ -1,11 +1,61 @@
 // ─── App entry ─────────────────────────────────────────────────────────
 
+// localStorage keys for restoring exactly where the user left off
+const LS_PAGE       = "suty.lastPage";
+const LS_PRODUCT_ID = "suty.lastProductId";
+const LS_DOC_ID     = "suty.lastDocId";
+
+const VALID_PAGES = new Set(["home", "scripts", "subscriptions", "docs", "about"]);
+
 function App() {
-  const [page, setPage] = useState("home");
+  // ── Restore last view from localStorage so a refresh keeps you put ──
+  const [page, setPage] = useState(() => {
+    try {
+      const v = localStorage.getItem(LS_PAGE);
+      return VALID_PAGES.has(v) ? v : "home";
+    } catch { return "home"; }
+  });
+  const [viewedProductId, setViewedProductId] = useState(() => {
+    try {
+      const v = Number(localStorage.getItem(LS_PRODUCT_ID));
+      return Number.isFinite(v) && v > 0 ? v : null;
+    } catch { return null; }
+  });
+  const [activeDocId, setActiveDocId] = useState(() => {
+    try { return localStorage.getItem(LS_DOC_ID) || null; } catch { return null; }
+  });
   const [viewedProduct, setViewedProduct] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [toast, setToast] = useState(null); // { tone, title, body } | null
   const cart = useCart();
+  const { packages } = useScripts();
+
+  // Resolve viewedProductId → product object once the catalog loads. If the
+  // stored id no longer maps to a real package (script deleted, etc.), drop it.
+  useEffect(() => {
+    if (viewedProductId == null) { setViewedProduct(null); return; }
+    if (!packages || packages.length === 0) return; // wait for catalog
+    const found = packages.find((p) => p.id === viewedProductId);
+    if (found) setViewedProduct(found);
+    else setViewedProductId(null);
+  }, [viewedProductId, packages]);
+
+  // Persist state changes
+  useEffect(() => {
+    try { localStorage.setItem(LS_PAGE, page); } catch {}
+  }, [page]);
+  useEffect(() => {
+    try {
+      if (viewedProductId == null) localStorage.removeItem(LS_PRODUCT_ID);
+      else localStorage.setItem(LS_PRODUCT_ID, String(viewedProductId));
+    } catch {}
+  }, [viewedProductId]);
+  useEffect(() => {
+    try {
+      if (!activeDocId) localStorage.removeItem(LS_DOC_ID);
+      else localStorage.setItem(LS_DOC_ID, activeDocId);
+    } catch {}
+  }, [activeDocId]);
 
   // ── Post-redirect handlers — runs once on first render ──
   // Tebex / FiveM bounces the user back with a query param. We act on it,
@@ -127,15 +177,18 @@ function App() {
 
   const onOpen = useCallback((script) => {
     setViewedProduct(script);
+    setViewedProductId(script.id);
   }, []);
 
   const onCloseProduct = useCallback(() => {
     setViewedProduct(null);
+    setViewedProductId(null);
   }, []);
 
   // Switching nav tabs also clears any open product
   const goToPage = useCallback((p) => {
     setViewedProduct(null);
+    setViewedProductId(null);
     setPage(p);
   }, []);
 
@@ -148,16 +201,35 @@ function App() {
     <div className="min-h-screen flex flex-col">
       <Header page={page} setPage={goToPage} onOpenCart={() => setCartOpen(true)} />
 
-      {viewedProduct ? (
-        <main key={`product-${viewedProduct.id}`} className="flex-1 page-transition">
-          <ProductDetailPage script={viewedProduct} onBack={onCloseProduct} onAdd={onAdd} />
-        </main>
+      {viewedProductId ? (
+        viewedProduct ? (
+          <main key={`product-${viewedProduct.id}`} className="flex-1 page-transition">
+            <ProductDetailPage script={viewedProduct} onBack={onCloseProduct} onAdd={onAdd} />
+          </main>
+        ) : (
+          // Catalog still loading after a refresh — skeleton so the
+          // landing page doesn't flash before the product resolves
+          <main className="flex-1 page-transition">
+            <div className="max-w-6xl mx-auto px-6 pt-16 pb-24">
+              <div className="skeleton h-4 w-32 rounded mb-8" />
+              <div className="grid md:grid-cols-[1.2fr_1fr] gap-10">
+                <div className="aspect-[16/10] rounded-2xl skeleton" />
+                <div className="space-y-4">
+                  <div className="skeleton h-3 w-24 rounded" />
+                  <div className="skeleton h-10 w-3/4 rounded" />
+                  <div className="skeleton h-6 w-1/2 rounded" />
+                  <div className="skeleton h-12 w-40 rounded" />
+                </div>
+              </div>
+            </div>
+          </main>
+        )
       ) : (
         <main key={page} className="flex-1 page-transition">
           {page === "home"           && <LandingPage onAdd={onAdd} onOpen={onOpen} setPage={goToPage} />}
           {page === "scripts"        && <ScriptsPage onAdd={onAdd} onOpen={onOpen} />}
           {page === "subscriptions"  && <SubscriptionsPage onAdd={onAdd} onOpen={onOpen} />}
-          {page === "docs"           && <DocsPage />}
+          {page === "docs"           && <DocsPage activeDocId={activeDocId} setActiveDocId={setActiveDocId} />}
           {page === "about"          && <AboutPage />}
         </main>
       )}

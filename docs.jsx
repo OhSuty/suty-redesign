@@ -235,8 +235,11 @@ function DocsIndex({ onSelect }) {
   );
 }
 
-function DocsPage() {
-  const [active, setActive] = useState(null); // null = welcome index view
+function DocsPage({ activeDocId, setActiveDocId }) {
+  // Allow uncontrolled usage as a fallback (App passes controlled props)
+  const [internalActive, setInternalActive] = useState(null);
+  const active = activeDocId !== undefined ? activeDocId : internalActive;
+  const setActive = setActiveDocId || setInternalActive;
   const [query, setQuery] = useState("");
   // Reset scroll on doc change
   useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" }); }, [active]);
