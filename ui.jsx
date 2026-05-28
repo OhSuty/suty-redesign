@@ -87,7 +87,31 @@ function ButtonGhost({ children, className = "", icon, ...rest }) {
   );
 }
 
-// ── Reveal hook ────────────────────────────────────────────────────────
+// ── Reveal wrapper: single-element scroll-triggered pop-in ─────────────
+// Use this for headings, hero blocks, individual cards.
+// For grids/lists where you want index-based stagger, use the
+// `useReveal` hook below + put `className="reveal"` on each child.
+function Reveal({ children, delay = 0, className = "" }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          el.classList.add("is-visible");
+          io.unobserve(el);
+        }
+      });
+    }, { rootMargin: "0px 0px -6% 0px", threshold: 0.08 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  const style = delay ? { transitionDelay: `${delay}ms` } : undefined;
+  return <div ref={ref} className={"reveal " + className} style={style}>{children}</div>;
+}
+
+// ── Reveal hook (for grids — staggers `.reveal` children by index) ────
 function useReveal({ stagger = 60 } = {}) {
   const rootRef = useRef(null);
   useEffect(() => {
@@ -541,6 +565,6 @@ function CartDrawer({ open, onClose }) {
 
 Object.assign(window, {
   Icon, SectionEyebrow, Chip, ButtonPrimary, ButtonGhost,
-  useReveal, FrameworkBadge, CartProvider, useCart,
+  Reveal, useReveal, FrameworkBadge, CartProvider, useCart,
   Avatar, Logo, Header, Footer, CartDrawer, NAV_ITEMS
 });

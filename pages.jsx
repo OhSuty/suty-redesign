@@ -133,12 +133,14 @@ function ShowcaseDeck({ scripts, onAdd, onMore }) {
       <div className="pointer-events-none absolute inset-x-0 -top-20 h-[400px] blur-2xl" style={{ background: "radial-gradient(ellipse at center, rgba(153,27,27,0.35), transparent 60%)" }} />
 
       <div className="relative max-w-6xl mx-auto px-6 pb-20 pt-12 sm:pb-28 sm:pt-20">
-        <div className="text-center mb-10">
-          <SectionEyebrow>Newest drops</SectionEyebrow>
-          <h2 className="mt-4 font-black tracking-tighter leading-[1] text-4xl md:text-5xl">
-            The <span className="italic-accent shine">good</span> stuff.
-          </h2>
-        </div>
+        <Reveal>
+          <div className="text-center mb-10">
+            <SectionEyebrow>Newest drops</SectionEyebrow>
+            <h2 className="mt-4 font-black tracking-tighter leading-[1] text-4xl md:text-5xl">
+              The <span className="italic-accent shine">good</span> stuff.
+            </h2>
+          </div>
+        </Reveal>
 
         <div className="stage-deck flex flex-col items-center justify-center gap-6 sm:flex-row sm:items-end sm:gap-4" style={{ perspective: "1400px" }}>
           <ShowcaseMini key={`L-${left.id}`}   script={left}   position="left"   onClick={() => onAdd && onAdd(left)} />
@@ -164,11 +166,13 @@ function ShowcaseDeck({ scripts, onAdd, onMore }) {
           </div>
         )}
 
-        <div className="mt-10 text-center">
-          <button onClick={onMore} className="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--fg-muted)] hover:text-[var(--accent-hover)] transition-colors">
-            Browse the full catalog →
-          </button>
-        </div>
+        <Reveal delay={150}>
+          <div className="mt-10 text-center">
+            <button onClick={onMore} className="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--fg-muted)] hover:text-[var(--accent-hover)] transition-colors">
+              Browse the full catalog →
+            </button>
+          </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -184,28 +188,30 @@ function FrameworkSection({ active, setActive, scripts }) {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent opacity-40" />
 
       <div className="relative max-w-5xl mx-auto px-6 text-center">
-        <SectionEyebrow>Compatibility</SectionEyebrow>
-        <h2 className="mt-5 font-black tracking-tighter leading-[1] text-4xl md:text-5xl">
-          Built for every <span className="italic-accent shine">framework</span>.
-        </h2>
-        <p className="mt-5 text-[15px] text-[var(--fg-muted)] max-w-md mx-auto">
-          Most Suty scripts ship with native support for all three of the major FiveM frameworks — drop them in and they just work.
-        </p>
+        <Reveal>
+          <SectionEyebrow>Compatibility</SectionEyebrow>
+          <h2 className="mt-5 font-black tracking-tighter leading-[1] text-4xl md:text-5xl">
+            Built for every <span className="italic-accent shine">framework</span>.
+          </h2>
+          <p className="mt-5 text-[15px] text-[var(--fg-muted)] max-w-md mx-auto">
+            Most Suty scripts ship with native support for all three of the major FiveM frameworks — drop them in and they just work.
+          </p>
+        </Reveal>
 
         <div className="mt-12 grid grid-cols-3 items-start gap-4 sm:gap-10 md:gap-16">
-          {order.map((f) => {
+          {order.map((f, i) => {
             const meta = FRAMEWORK_META[f];
             if (!meta) return null;
             const count = list.filter(s => s.frameworks.includes(f)).length;
             const isActive = active === f;
             return (
-              <button
-                key={f}
-                onClick={() => setActive(isActive ? null : f)}
-                aria-label={`${meta.label} — ${count} scripts`}
-                title={`${meta.label} → ${meta.href.replace(/^https?:\/\//, "")}`}
-                className="group flex flex-col items-center gap-3 outline-none"
-              >
+              <Reveal key={f} delay={i * 140}>
+                <button
+                  onClick={() => setActive(isActive ? null : f)}
+                  aria-label={`${meta.label} — ${count} scripts`}
+                  title={`${meta.label} → ${meta.href.replace(/^https?:\/\//, "")}`}
+                  className="group flex flex-col items-center gap-3 outline-none w-full"
+                >
                 <div
                   className={
                     "relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl border bg-black p-3 sm:p-4 transition-all duration-300 group-hover:scale-105 " +
@@ -226,10 +232,11 @@ function FrameworkSection({ active, setActive, scripts }) {
                 }>
                   {meta.label}
                 </div>
-                <div className="text-[10px] uppercase tracking-[0.22em] text-[var(--fg-muted)]">
-                  {count} {count === 1 ? "script" : "scripts"}
-                </div>
-              </button>
+                  <div className="text-[10px] uppercase tracking-[0.22em] text-[var(--fg-muted)]">
+                    {count} {count === 1 ? "script" : "scripts"}
+                  </div>
+                </button>
+              </Reveal>
             );
           })}
         </div>
@@ -243,12 +250,14 @@ function RecentPurchases() {
   return (
     <section className="relative py-20">
       <div className="max-w-3xl mx-auto px-6">
-        <div className="text-center mb-10">
-          <SectionEyebrow>Live · last 7 days</SectionEyebrow>
-          <h2 className="mt-4 font-black tracking-tighter leading-[1] text-4xl md:text-5xl">
-            Recent <span className="italic-accent shine">purchases</span>.
-          </h2>
-        </div>
+        <Reveal>
+          <div className="text-center mb-10">
+            <SectionEyebrow>Live · last 7 days</SectionEyebrow>
+            <h2 className="mt-4 font-black tracking-tighter leading-[1] text-4xl md:text-5xl">
+              Recent <span className="italic-accent shine">purchases</span>.
+            </h2>
+          </div>
+        </Reveal>
 
         <ul ref={ref} className="card rounded-xl divide-y divide-[var(--border)] overflow-hidden">
           {BUYERS.map((b, i) => (
@@ -278,12 +287,15 @@ function FAQSection() {
   return (
     <section className="relative py-24">
       <div className="max-w-3xl mx-auto px-6">
-        <div className="text-center mb-12">
-          <SectionEyebrow>FAQ</SectionEyebrow>
-          <h2 className="mt-4 font-black tracking-tighter leading-[1] text-4xl md:text-5xl">
-            Asked <span className="italic-accent shine">often</span>.
-          </h2>
-        </div>
+        <Reveal>
+          <div className="text-center mb-12">
+            <SectionEyebrow>FAQ</SectionEyebrow>
+            <h2 className="mt-4 font-black tracking-tighter leading-[1] text-4xl md:text-5xl">
+              Asked <span className="italic-accent shine">often</span>.
+            </h2>
+          </div>
+        </Reveal>
+        <Reveal delay={120}>
         <div className="card rounded-xl divide-y divide-[var(--border)] overflow-hidden">
           {FAQS.map((f, i) => (
             <details key={i} className="faq group">
@@ -300,6 +312,7 @@ function FAQSection() {
             </details>
           ))}
         </div>
+        </Reveal>
       </div>
     </section>
   );
