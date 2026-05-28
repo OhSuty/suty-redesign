@@ -705,21 +705,32 @@ function ProductDetailPage({ script, onBack, onAdd }) {
         </button>
 
         <div className="grid md:grid-cols-[1.2fr_1fr] gap-10 lg:gap-14 items-start">
-          {/* Image */}
+          {/* Hero media — YouTube/Vimeo iframe if the description has one, else image */}
           <Reveal>
             <div className="relative aspect-[16/10] rounded-2xl overflow-hidden border border-[var(--border)] bg-black">
-              {script.image ? (
+              {script.videoUrl ? (
+                <iframe
+                  src={Tebex.toEmbedUrl(script.videoUrl)}
+                  title={`${script.displayName} — showcase`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  loading="lazy"
+                  className="absolute inset-0 w-full h-full"
+                  style={{ border: 0 }}
+                />
+              ) : script.image ? (
                 <img src={script.image} alt={script.displayName} className="w-full h-full object-cover" />
               ) : (
                 <div className="img-fallback h-full w-full grid place-items-center text-[var(--accent-hover)] font-bold uppercase tracking-wider">
                   {script.displayName}
                 </div>
               )}
-              {/* Subtle bottom shadow inside the image */}
-              <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+              {!script.videoUrl && (
+                <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+              )}
 
               {/* Pills */}
-              <div className="absolute top-3 left-3 flex items-center gap-2">
+              <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
                 {isSub && (
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur border border-[var(--border-2)] text-[10px] uppercase tracking-[0.18em] text-white/90">
                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-hover)]"></span>
@@ -729,6 +740,12 @@ function ProductDetailPage({ script, onBack, onAdd }) {
                 {script.isNew && (
                   <div className="px-2 py-1 rounded-md bg-[var(--accent)] text-white text-[10px] font-bold uppercase tracking-[0.18em]" style={{ boxShadow: "0 0 18px rgba(153,27,27,0.55), inset 0 1px 0 rgba(255,255,255,0.18)" }}>
                     New
+                  </div>
+                )}
+                {script.videoUrl && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur border border-[var(--border-2)] text-[10px] uppercase tracking-[0.18em] text-white/90">
+                    <Icon name="play" size={9} className="text-[var(--accent-hover)]" />
+                    Showcase
                   </div>
                 )}
               </div>
@@ -796,14 +813,17 @@ function ProductDetailPage({ script, onBack, onAdd }) {
           </Reveal>
         </div>
 
-        {/* Description */}
-        {script.description && (
+        {/* Description — Tebex-authored HTML. Already sanitized upstream
+            (Tebex.scrubHtml strips <script>, on*= handlers, javascript:
+            URLs in adaptPackage). Same trust model as docs HTML. */}
+        {script.descriptionHtml && (
           <Reveal delay={200}>
             <div className="mt-20 max-w-3xl">
               <SectionEyebrow>About this script</SectionEyebrow>
-              <div className="mt-6 text-[15px] text-white/90 leading-[1.85] whitespace-pre-line">
-                {script.description}
-              </div>
+              <div
+                className="mt-6 tebex-html"
+                dangerouslySetInnerHTML={{ __html: script.descriptionHtml }}
+              />
             </div>
           </Reveal>
         )}

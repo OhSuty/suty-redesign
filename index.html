@@ -372,6 +372,106 @@
   /* prevent layout shift in icons */
   svg{ flex-shrink:0; }
 
+  /* ── Tebex-authored description HTML (product detail page) ──
+     Bright white body text, red links, inline GIF / image / video
+     auto-rendered. Mirrors suty.dev's .tebex-html styling. */
+  .tebex-html{
+    color: #ffffff;
+    font-size: 15px;
+    line-height: 1.85;
+  }
+  .tebex-html p{ color: #ffffff; margin-top: 0.9em; }
+  .tebex-html p:first-child{ margin-top: 0; }
+  .tebex-html h1{ color: #fff; font-weight: 800; letter-spacing: -0.02em; font-size: 24px; margin-top: 1.6em; margin-bottom: 0.4em; }
+  .tebex-html h2{ color: #fff; font-weight: 700; letter-spacing: -0.02em; font-size: 19px; margin-top: 2.2em; margin-bottom: 0.5em; }
+  .tebex-html h3{ color: #fff; font-weight: 700; font-size: 16px; margin-top: 1.8em; margin-bottom: 0.4em; }
+  .tebex-html strong, .tebex-html b{ color: #fff; font-weight: 700; }
+  .tebex-html em, .tebex-html i{ color: #f1f1f1; font-style: italic; }
+  .tebex-html u{ text-underline-offset: 3px; }
+  .tebex-html ul, .tebex-html ol{ margin: 0.6em 0; padding-left: 1.25em; }
+  .tebex-html ul li{ list-style: disc; color: #fff; line-height: 1.75; padding-left: 0.25em; }
+  .tebex-html ol li{ list-style: decimal; color: #fff; line-height: 1.75; padding-left: 0.25em; }
+  .tebex-html li::marker{ color: #5a5a5a; }
+  .tebex-html hr{ border: none; border-top: 1px solid #1a1a1a; margin: 2em 0; }
+  .tebex-html blockquote{ border-left: 3px solid #991b1b; padding-left: 1em; margin: 1em 0; color: #d8d8d8; font-style: italic; }
+
+  /* Links — always red, always underlined, always clickable, even when
+     wrapped in <span style="color:..."> by Tebex's editor. */
+  .tebex-html a{
+    color: #991b1b !important;
+    text-decoration: underline !important;
+    text-underline-offset: 3px;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 1;
+    display: inline-block;
+    padding: 2px 1px;
+    transition: color 150ms ease;
+  }
+  .tebex-html a *,
+  .tebex-html a strong,
+  .tebex-html a u,
+  .tebex-html a span,
+  .tebex-html span > a{
+    color: #991b1b !important;
+    pointer-events: auto !important;
+  }
+  .tebex-html span[style*="color"] a,
+  .tebex-html span[style*="color"] a *{
+    color: #991b1b !important;
+  }
+  .tebex-html a:hover,
+  .tebex-html a:hover *{ color: #b91c1c !important; }
+
+  /* Inline code + code blocks */
+  .tebex-html code{
+    color: #fca5a5;
+    background: rgba(0,0,0,0.4);
+    padding: 0.1em 0.4em;
+    border-radius: 4px;
+    font-size: 0.92em;
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .tebex-html pre{
+    background: #070707;
+    border: 1px solid #1a1a1a;
+    border-radius: 10px;
+    padding: 1em;
+    overflow-x: auto;
+    margin: 1em 0;
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.65;
+  }
+  .tebex-html pre code{ background: transparent; color: #d4d4d4; padding: 0; }
+
+  /* Embedded images Tebex authors paste directly */
+  .tebex-html img{
+    border-radius: 8px;
+    border: 1px solid #1a1a1a;
+    max-width: 100%;
+    height: auto;
+    margin: 0.8em 0;
+  }
+
+  /* Auto-inlined media (bare URLs upgraded to <img>/<video>) */
+  .inline-media{
+    display: block;
+    margin: 1.1em 0;
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    border: 1px solid #1a1a1a;
+    background: #0a0a0a;
+  }
+  .inline-media-video{ width: 100%; }
+
+  /* Tables Tebex emits */
+  .tebex-html table{ width: 100%; border-collapse: collapse; margin: 1.2em 0; font-size: 13.5px; }
+  .tebex-html thead{ background: #0c0c0c; }
+  .tebex-html th, .tebex-html td{ padding: 0.55em 0.8em; border-bottom: 1px solid #1a1a1a; text-align: left; color: #fff; }
+  .tebex-html th{ font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.14em; color: #888; }
+
   /* Recent purchases row — soft cascade-in when the live list mounts */
   @keyframes recent-row-in{
     from { opacity: 0; transform: translateY(8px); }

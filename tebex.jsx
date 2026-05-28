@@ -65,9 +65,118 @@ function formatPrice(amount, currency){
   }
 }
 
+// ── Inline media — bare image / video URLs become real <img>/<video> ──
+const IMG_EXT_RE   = /\.(gif|png|jpe?g|webp|avif)(?:\?[^\s"'<>]*)?$/i;
+const VID_EXT_RE   = /\.(mp4|webm|mov)(?:\?[^\s"'<>]*)?$/i;
+const BARE_URL_RE  = /(https?:\/\/[^\s"'<>)\]]+)/g;
+
+function isImageUrl(u){ const q = u.split("?")[0]; return IMG_EXT_RE.test(q) || IMG_EXT_RE.test(u); }
+function isVideoUrl(u){ const q = u.split("?")[0]; return VID_EXT_RE.test(q) || VID_EXT_RE.test(u); }
+
+function mediaTagFor(url){
+  if (isVideoUrl(url)) {
+    return `<video src="${url}" controls playsinline preload="metadata" class="inline-media inline-media-video"></video>`;
+  }
+  return `<img src="${url}" alt="" loading="lazy" class="inline-media inline-media-image" />`;
+}
+
+// Walks an HTML string and replaces bare image/video URLs with the actual
+// media element, both inside <a> tags (where the visible text == the href)
+// and in raw text nodes. Tebex descriptions often paste a r2.fivemanage.com
+// URL hoping it'll render — this makes it render.
+function inlineMediaInHtml(html){
+  if (!html) return html;
+  let out = String(html);
+
+  // <a href="X.gif">X.gif</a>  →  <img src="X.gif">  (only when anchor text matches the URL)
+  out = out.replace(
+    /<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,
+    (match, href, innerHtml) => {
+      const url = href.trim();
+      if (!isImageUrl(url) && !isVideoUrl(url)) return match;
+      const innerText = innerHtml.replace(/<[^>]+>/g, "").trim();
+      if (innerText && innerText !== url) {
+        try { if (innerText === encodeURI(url)) return mediaTagFor(url); } catch {}
+        return match; // custom anchor text — leave as link
+      }
+      return mediaTagFor(url);
+    }
+  );
+
+  // Bare URLs in text nodes (between tags, not inside attributes)
+  out = out.replace(/>([^<]+)</g, (_m, text) => {
+    const replaced = text.replace(BARE_URL_RE, (url) =>
+      (isImageUrl(url) || isVideoUrl(url)) ? mediaTagFor(url) : url
+    );
+    return `>${replaced}<`;
+  });
+
+  return out;
+}
+
+// ── Video extraction (for product detail hero) ───────────────────────
+function extractFirstVideoUrl(text){
+  if (!text) return null;
+  const patterns = [
+    /https?:\/\/(?:www\.)?youtube\.com\/watch\?[^\s"'<>&]*v=[A-Za-z0-9_-]{11}[^\s"'<>]*/i,
+    /https?:\/\/(?:www\.)?youtube\.com\/embed\/[A-Za-z0-9_-]{11}[^\s"'<>]*/i,
+    /https?:\/\/(?:www\.)?youtube\.com\/shorts\/[A-Za-z0-9_-]{11}[^\s"'<>]*/i,
+    /https?:\/\/youtu\.be\/[A-Za-z0-9_-]{11}[^\s"'<>]*/i,
+    /https?:\/\/(?:www\.)?vimeo\.com\/\d+[^\s"'<>]*/i
+  ];
+  for (const re of patterns) {
+    const m = String(text).match(re);
+    if (m) return m[0].split("&amp;")[0].replace(/[")\.,;]+$/, "");
+  }
+  return null;
+}
+
+function toEmbedUrl(url){
+  if (!url) return url;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      const v = u.searchParams.get("v");
+      if (v) return `https://www.youtube.com/embed/${v}`;
+      if (u.pathname.startsWith("/embed/")) return url;
+      if (u.pathname.startsWith("/shorts/")) {
+        const id = u.pathname.split("/")[2];
+        if (id) return `https://www.youtube.com/embed/${id}`;
+      }
+    }
+    if (host === "youtu.be") {
+      const id = u.pathname.slice(1);
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+    if (host === "vimeo.com") {
+      const id = u.pathname.split("/").filter(Boolean)[0];
+      if (id && /^\d+$/.test(id)) return `https://player.vimeo.com/video/${id}`;
+    }
+    return url;
+  } catch { return url; }
+}
+
+// Defense-in-depth XSS scrub for admin-authored Tebex HTML. Same posture
+// as the docs build script — strip <script>, on* event attrs, javascript:.
+function scrubHtml(html){
+  return String(html)
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/\s+on[a-z]+\s*=\s*"[^"]*"/gi, "")
+    .replace(/\s+on[a-z]+\s*=\s*'[^']*'/gi, "")
+    .replace(/\s+on[a-z]+\s*=\s*[^\s>]+/gi, "")
+    .replace(/(href|src)\s*=\s*"\s*(?:javascript|data):[^"]*"/gi, '$1="#"')
+    .replace(/(href|src)\s*=\s*'\s*(?:javascript|data):[^']*'/gi, "$1='#'");
+}
+
 // Map a Tebex package → the script shape the redesign's UI expects
 function adaptPackage(pkg){
-  const displayName = cleanProductName(pkg.name);
+  const displayName  = cleanProductName(pkg.name);
+  const rawDesc      = pkg.description || "";
+  const videoUrl     = extractFirstVideoUrl(rawDesc);
+  // Description that drives the rich detail-page rendering: scrubbed for XSS,
+  // bare image/video URLs inlined as real media tags.
+  const descriptionHtml = inlineMediaInHtml(scrubHtml(rawDesc));
   return {
     id: pkg.id, // numeric Tebex package id
     name: pkg.name,
@@ -76,8 +185,10 @@ function adaptPackage(pkg){
     price: pkg.total_price,
     currency: pkg.currency,
     image: pkg.image,
-    frameworks: detectFrameworks(pkg.name + " " + (pkg.description || "")),
-    description: stripHtml(pkg.description),
+    frameworks: detectFrameworks(pkg.name + " " + rawDesc),
+    description:     stripHtml(rawDesc),   // plain text fallback
+    descriptionHtml,                       // rich HTML for the detail page
+    videoUrl,                              // first YouTube/Vimeo URL in desc, or null
     isNew: isRecentlyCreated(pkg.created_at),
     type: pkg.type === "subscription" ? "subscription" : "single",
     createdAt: pkg.created_at,
@@ -209,6 +320,10 @@ window.Tebex = {
   getBasketAuthUrls,
   BasketAuthRequiredError,
   cleanProductName,
-  formatPrice
+  formatPrice,
+  inlineMediaInHtml,
+  extractFirstVideoUrl,
+  toEmbedUrl,
+  scrubHtml
 };
 Object.assign(window, { ScriptsProvider, useScripts });
