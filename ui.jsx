@@ -112,7 +112,13 @@ function Reveal({ children, delay = 0, className = "" }) {
 }
 
 // ── Reveal hook (for grids — staggers `.reveal` children by index) ────
-function useReveal({ stagger = 60 } = {}) {
+//
+// IMPORTANT: pass `deps` whenever the observed children change (e.g. when
+// switching catalogue filters). Without it, the observer only runs once
+// on mount; subsequent re-renders that swap children (different React
+// keys → fresh DOM nodes) would leave the new items stuck at opacity:0
+// because they never get .is-visible.
+function useReveal({ stagger = 60, deps = [] } = {}) {
   const rootRef = useRef(null);
   useEffect(() => {
     const root = rootRef.current;
@@ -128,9 +134,15 @@ function useReveal({ stagger = 60 } = {}) {
         }
       });
     }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
-    items.forEach((el, i) => { el.dataset.idx = i; io.observe(el); });
+    items.forEach((el, i) => {
+      el.dataset.idx = i;
+      // Items that were already revealed in a previous run keep that state
+      // — IO above only fires for currently-hidden ones, which is fine.
+      if (!el.classList.contains("is-visible")) io.observe(el);
+    });
     return () => io.disconnect();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
   return rootRef;
 }
 

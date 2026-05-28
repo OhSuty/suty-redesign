@@ -230,7 +230,9 @@ function SubscriptionCard({ sub, onAdd }) {
 }
 
 function ProductGrid({ scripts, onAdd, onOpen, columns = 3 }) {
-  const ref = useReveal({ stagger: 70 });
+  // Re-observe when the visible scripts change (e.g. category filter swap)
+  // so the new .reveal wrappers actually fire their IO and become visible.
+  const ref = useReveal({ stagger: 70, deps: [scripts] });
   const cls = columns === 3 ? "md:grid-cols-3" : columns === 2 ? "md:grid-cols-2" : "md:grid-cols-4";
   return (
     <div ref={ref} className={`grid grid-cols-2 ${cls} gap-3 sm:gap-5`}>
