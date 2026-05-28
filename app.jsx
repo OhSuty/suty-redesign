@@ -2,6 +2,7 @@
 
 function App() {
   const [page, setPage] = useState("home");
+  const [viewedProduct, setViewedProduct] = useState(null);
   const [cartOpen, setCartOpen] = useState(false);
   const cart = useCart();
 
@@ -10,24 +11,44 @@ function App() {
     // briefly open the cart? — no, just bump the badge; keeps the flow smooth.
   }, [cart]);
 
-  // Reset scroll on page switch
+  const onOpen = useCallback((script) => {
+    setViewedProduct(script);
+  }, []);
+
+  const onCloseProduct = useCallback(() => {
+    setViewedProduct(null);
+  }, []);
+
+  // Switching nav tabs also clears any open product
+  const goToPage = useCallback((p) => {
+    setViewedProduct(null);
+    setPage(p);
+  }, []);
+
+  // Reset scroll on page or product switch
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
-  }, [page]);
+  }, [page, viewedProduct && viewedProduct.id]);
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header page={page} setPage={setPage} onOpenCart={() => setCartOpen(true)} />
+      <Header page={page} setPage={goToPage} onOpenCart={() => setCartOpen(true)} />
 
-      <main key={page} className="flex-1 page-transition">
-        {page === "home"           && <LandingPage onAdd={onAdd} setPage={setPage} />}
-        {page === "scripts"        && <ScriptsPage onAdd={onAdd} />}
-        {page === "subscriptions"  && <SubscriptionsPage onAdd={onAdd} />}
-        {page === "docs"           && <DocsPage />}
-        {page === "about"          && <AboutPage />}
-      </main>
+      {viewedProduct ? (
+        <main key={`product-${viewedProduct.id}`} className="flex-1 page-transition">
+          <ProductDetailPage script={viewedProduct} onBack={onCloseProduct} onAdd={onAdd} />
+        </main>
+      ) : (
+        <main key={page} className="flex-1 page-transition">
+          {page === "home"           && <LandingPage onAdd={onAdd} onOpen={onOpen} setPage={goToPage} />}
+          {page === "scripts"        && <ScriptsPage onAdd={onAdd} onOpen={onOpen} />}
+          {page === "subscriptions"  && <SubscriptionsPage onAdd={onAdd} onOpen={onOpen} />}
+          {page === "docs"           && <DocsPage />}
+          {page === "about"          && <AboutPage />}
+        </main>
+      )}
 
-      <Footer setPage={setPage} />
+      <Footer setPage={goToPage} />
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
     </div>

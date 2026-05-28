@@ -95,7 +95,7 @@ function ShowcaseMini({ script, position, onClick }) {
   );
 }
 
-function ShowcaseDeck({ scripts, onAdd, onMore }) {
+function ShowcaseDeck({ scripts, onAdd, onOpen, onMore }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
 
@@ -144,9 +144,9 @@ function ShowcaseDeck({ scripts, onAdd, onMore }) {
 
         <Reveal delay={80}>
           <div className="stage-deck flex flex-col items-center justify-center gap-6 sm:flex-row sm:items-end sm:gap-4" style={{ perspective: "1400px" }}>
-            <ShowcaseMini key={`L-${left.id}`}   script={left}   position="left"   onClick={() => onAdd && onAdd(left)} />
-            <ShowcaseMini key={`C-${center.id}`} script={center} position="center" onClick={() => onAdd && onAdd(center)} />
-            <ShowcaseMini key={`R-${right.id}`}  script={right}  position="right"  onClick={() => onAdd && onAdd(right)} />
+            <ShowcaseMini key={`L-${left.id}`}   script={left}   position="left"   onClick={() => onOpen && onOpen(left)} />
+            <ShowcaseMini key={`C-${center.id}`} script={center} position="center" onClick={() => onOpen && onOpen(center)} />
+            <ShowcaseMini key={`R-${right.id}`}  script={right}  position="right"  onClick={() => onOpen && onOpen(right)} />
           </div>
         </Reveal>
 
@@ -313,7 +313,7 @@ function FAQSection() {
   );
 }
 
-function LandingPage({ onAdd, setPage }) {
+function LandingPage({ onAdd, onOpen, setPage }) {
   const { packages, loading } = useScripts();
   const onlySingles = useMemo(() => packages.filter(p => p.type !== "subscription"), [packages]);
   return (
@@ -327,7 +327,7 @@ function LandingPage({ onAdd, setPage }) {
           </div>
         </section>
       ) : (
-        <ShowcaseDeck scripts={onlySingles} onAdd={onAdd} onMore={() => setPage("scripts")} />
+        <ShowcaseDeck scripts={onlySingles} onAdd={onAdd} onOpen={onOpen} onMore={() => setPage("scripts")} />
       )}
       <FrameworkSection scripts={onlySingles} />
       <RecentPurchases />
@@ -337,7 +337,7 @@ function LandingPage({ onAdd, setPage }) {
 }
 
 // ── Scripts page ──────────────────────────────────────────────────────
-function ScriptsPage({ onAdd }) {
+function ScriptsPage({ onAdd, onOpen }) {
   const { packages, loading } = useScripts();
   const [cat, setCat] = useState("All");
   const [framework, setFramework] = useState(null);
@@ -445,7 +445,7 @@ function ScriptsPage({ onAdd }) {
             </div>
           </div>
         ) : (
-          <ProductGrid scripts={list} onAdd={onAdd} columns={3} />
+          <ProductGrid scripts={list} onAdd={onAdd} onOpen={onOpen} columns={3} />
         )}
       </section>
     </React.Fragment>
@@ -583,4 +583,136 @@ function AboutPage() {
   );
 }
 
-Object.assign(window, { LandingPage, ScriptsPage, SubscriptionsPage, AboutPage });
+// ── Product detail page ──────────────────────────────────────────────
+function ProductDetailPage({ script, onBack, onAdd }) {
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+  }, [script && script.id]);
+
+  if (!script) return null;
+  const isSub = script.type === "subscription";
+
+  return (
+    <section className="relative overflow-hidden">
+      <div className="absolute inset-0 dot-bg opacity-50" aria-hidden />
+      <div className="absolute inset-0 spotlight-soft pointer-events-none" aria-hidden />
+
+      <div className="relative max-w-6xl mx-auto px-6 pt-10 pb-24">
+        {/* Back link */}
+        <button
+          onClick={onBack}
+          className="mb-8 inline-flex items-center gap-2 text-sm text-[var(--fg-muted)] hover:text-white transition group"
+        >
+          <Icon name="arrow-left" size={14} className="transition-transform group-hover:-translate-x-0.5" />
+          Back to scripts
+        </button>
+
+        <div className="grid md:grid-cols-[1.2fr_1fr] gap-10 lg:gap-14 items-start">
+          {/* Image */}
+          <Reveal>
+            <div className="relative aspect-[16/10] rounded-2xl overflow-hidden border border-[var(--border)] bg-black">
+              {script.image ? (
+                <img src={script.image} alt={script.displayName} className="w-full h-full object-cover" />
+              ) : (
+                <div className="img-fallback h-full w-full grid place-items-center text-[var(--accent-hover)] font-bold uppercase tracking-wider">
+                  {script.displayName}
+                </div>
+              )}
+              {/* Subtle bottom shadow inside the image */}
+              <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+
+              {/* Pills */}
+              <div className="absolute top-3 left-3 flex items-center gap-2">
+                {isSub && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur border border-[var(--border-2)] text-[10px] uppercase tracking-[0.18em] text-white/90">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-hover)]"></span>
+                    Subscription
+                  </div>
+                )}
+                {script.isNew && (
+                  <div className="px-2 py-1 rounded-md bg-[var(--accent)] text-white text-[10px] font-bold uppercase tracking-[0.18em]" style={{ boxShadow: "0 0 18px rgba(153,27,27,0.55), inset 0 1px 0 rgba(255,255,255,0.18)" }}>
+                    New
+                  </div>
+                )}
+              </div>
+            </div>
+          </Reveal>
+
+          {/* Info */}
+          <Reveal delay={120}>
+            <div className="flex flex-col">
+              <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--fg-muted)]">{script.category}</div>
+              <h1 className="mt-3 font-black tracking-tighter leading-[1.02] text-4xl md:text-5xl text-white">
+                {script.displayName}
+              </h1>
+
+              <div className="mt-6 flex items-center gap-2 flex-wrap">
+                {(script.frameworks || []).map((f) => (
+                  <FrameworkBadge key={f} kind={f} size="lg" />
+                ))}
+              </div>
+
+              <div className="mt-8 flex items-end gap-2">
+                <div className="text-5xl font-black tracking-tighter tabular-nums">
+                  {Tebex.formatPrice(script.price, script.currency)}
+                </div>
+                {isSub && <div className="pb-2 text-sm text-[var(--fg-muted)]">/ month</div>}
+              </div>
+              <div className="text-xs text-[var(--fg-dim)] mt-1">
+                {isSub ? "Cancel anytime · billed automatically" : "Lifetime updates · Tebex escrow protected"}
+              </div>
+
+              <div className="mt-8 flex items-center gap-3">
+                <ButtonPrimary
+                  onClick={() => onAdd && onAdd(script)}
+                  icon={<Icon name="arrow-right" size={14} />}
+                  className="flex-1 md:flex-none"
+                >
+                  {isSub ? "Subscribe" : "Add to cart"}
+                </ButtonPrimary>
+                <a
+                  href={Tebex.DISCORD_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-ghost inline-flex items-center justify-center gap-2 px-4 h-11 rounded-md text-sm font-semibold"
+                >
+                  <Icon name="message-circle" size={14} />
+                  Support
+                </a>
+              </div>
+
+              {/* Meta strip */}
+              <div className="mt-10 grid grid-cols-3 gap-3">
+                {[
+                  { icon: "shield-check", k: "Escrow",    v: "Tebex" },
+                  { icon: "infinity",     k: "Updates",   v: "Lifetime" },
+                  { icon: "code-2",       k: "Server",    v: "Open" }
+                ].map((m) => (
+                  <div key={m.k} className="card rounded-lg p-3 flex flex-col items-start gap-1">
+                    <Icon name={m.icon} size={14} className="text-[var(--accent-hover)]" />
+                    <div className="text-[10px] uppercase tracking-[0.22em] text-[var(--fg-muted)] mt-1">{m.k}</div>
+                    <div className="text-xs font-semibold text-white">{m.v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+        </div>
+
+        {/* Description */}
+        {script.description && (
+          <Reveal delay={200}>
+            <div className="mt-20 max-w-3xl">
+              <SectionEyebrow>About this script</SectionEyebrow>
+              <div className="mt-6 text-[15px] text-white/90 leading-[1.85] whitespace-pre-line">
+                {script.description}
+              </div>
+            </div>
+          </Reveal>
+        )}
+      </div>
+    </section>
+  );
+}
+
+Object.assign(window, { LandingPage, ScriptsPage, SubscriptionsPage, AboutPage, ProductDetailPage });

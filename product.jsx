@@ -26,10 +26,22 @@ function ProductImage({ src, alt }) {
   );
 }
 
-function ProductCard({ script, onAdd, compact = false }) {
+function ProductCard({ script, onAdd, onOpen, compact = false }) {
   const isSub = script.type === "subscription";
+  const open = (e) => {
+    // Don't fire if click came from the Add button (it stops propagation, but belt + suspenders)
+    if (e && e.target && e.target.closest && e.target.closest("[data-stop-card-click]")) return;
+    if (onOpen) onOpen(script);
+  };
   return (
-    <article className="card card-lift group rounded-xl overflow-hidden flex flex-col">
+    <article
+      className="card card-lift group rounded-xl overflow-hidden flex flex-col cursor-pointer"
+      onClick={open}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(e); } }}
+      role="button"
+      tabIndex={0}
+      aria-label={`View ${script.displayName}`}
+    >
       {/* Media */}
       <div className="relative aspect-[16/10] overflow-hidden">
         <ProductImage src={script.image} alt={script.displayName || script.name} />
@@ -83,7 +95,8 @@ function ProductCard({ script, onAdd, compact = false }) {
             <div className="text-[11px] text-[var(--fg-dim)] mt-0.5">{isSub ? "Cancel anytime" : "Lifetime updates · escrow"}</div>
           </div>
           <button
-            onClick={() => onAdd && onAdd(script)}
+            data-stop-card-click
+            onClick={(e) => { e.stopPropagation(); onAdd && onAdd(script); }}
             className="btn-primary inline-flex items-center gap-2 px-4 h-10 rounded-md text-[13px] font-semibold"
           >
             <Icon name="plus" size={14} />
@@ -175,14 +188,14 @@ function SubscriptionCard({ sub, onAdd }) {
   );
 }
 
-function ProductGrid({ scripts, onAdd, columns = 3 }) {
+function ProductGrid({ scripts, onAdd, onOpen, columns = 3 }) {
   const ref = useReveal({ stagger: 70 });
   const cls = columns === 3 ? "md:grid-cols-3" : columns === 2 ? "md:grid-cols-2" : "md:grid-cols-4";
   return (
     <div ref={ref} className={`grid grid-cols-1 sm:grid-cols-2 ${cls} gap-5`}>
       {scripts.map((s) => (
         <div key={s.id} className="reveal">
-          <ProductCard script={s} onAdd={onAdd} />
+          <ProductCard script={s} onAdd={onAdd} onOpen={onOpen} />
         </div>
       ))}
     </div>
