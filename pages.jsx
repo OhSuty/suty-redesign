@@ -53,8 +53,8 @@ function ShowcaseMini({ script, position, onClick }) {
     position === "center"
       ? "sm:-translate-y-8 z-10 border-[var(--accent)]"
       : position === "left"
-        ? "sm:translate-x-2 sm:-translate-y-2 origin-right"
-        : "sm:-translate-x-2 sm:-translate-y-2 origin-left";
+        ? "rotate-y-15 sm:rotate-y-15"
+        : "-rotate-y-15 sm:-rotate-y-15";
   const extraShadow =
     position === "center"
       ? { boxShadow: "0 30px 80px rgba(153,27,27,0.45)" }
@@ -65,7 +65,7 @@ function ShowcaseMini({ script, position, onClick }) {
       <button
         onClick={onClick}
         className={
-          "group block overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[0_30px_60px_rgba(0,0,0,0.6)] transition-transform duration-500 hover:-translate-y-1 text-left " +
+          "stage-card group block overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[0_30px_60px_rgba(0,0,0,0.6)] transition-all duration-500 hover:-translate-y-1 text-left " +
           widthClass + " " + transformClass
         }
         style={extraShadow}
@@ -140,7 +140,7 @@ function ShowcaseDeck({ scripts, onAdd, onMore }) {
           </h2>
         </div>
 
-        <div className="flex flex-col items-center justify-center gap-6 sm:flex-row sm:items-end sm:gap-4" style={{ perspective: "1400px" }}>
+        <div className="stage-deck flex flex-col items-center justify-center gap-6 sm:flex-row sm:items-end sm:gap-4" style={{ perspective: "1400px" }}>
           <ShowcaseMini key={`L-${left.id}`}   script={left}   position="left"   onClick={() => onAdd && onAdd(left)} />
           <ShowcaseMini key={`C-${center.id}`} script={center} position="center" onClick={() => onAdd && onAdd(center)} />
           <ShowcaseMini key={`R-${right.id}`}  script={right}  position="right"  onClick={() => onAdd && onAdd(right)} />

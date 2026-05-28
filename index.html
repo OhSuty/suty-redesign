@@ -27,6 +27,7 @@
     --glow-strong: 0 0 32px rgba(153, 27, 27, 0.5);
   }
   *{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+  html{ scroll-behavior: smooth; }
   html, body{
     background:var(--bg);
     color:var(--fg);
@@ -94,26 +95,56 @@
     100% { background-position: -200% 0; }
   }
 
-  /* Hero staged entry */
+  /* Hero staged entry — translate + scale + blur sharpen (matches suty.dev) */
   .hero-step-0,.hero-step-1,.hero-step-2,.hero-step-3,.hero-step-4{
     opacity:0;
-    transform: translateY(20px);
-    transition: opacity 800ms cubic-bezier(.16,1,.3,1), transform 800ms cubic-bezier(.16,1,.3,1);
+    transform: translateY(28px) scale(0.96);
+    filter: blur(8px);
+    transition:
+      opacity   900ms cubic-bezier(.16,1,.3,1),
+      transform 900ms cubic-bezier(.16,1,.3,1),
+      filter    900ms cubic-bezier(.16,1,.3,1);
+    will-change: opacity, transform, filter;
   }
-  .hero-on .hero-step-0{ opacity:1; transform:translateY(0); transition-delay: 0ms; }
-  .hero-on .hero-step-1{ opacity:1; transform:translateY(0); transition-delay: 120ms; }
-  .hero-on .hero-step-2{ opacity:1; transform:translateY(0); transition-delay: 240ms; }
-  .hero-on .hero-step-3{ opacity:1; transform:translateY(0); transition-delay: 360ms; }
-  .hero-on .hero-step-4{ opacity:1; transform:translateY(0); transition-delay: 480ms; }
+  .hero-on .hero-step-0{ opacity:1; transform:translateY(0) scale(1); filter:blur(0); transition-delay: 100ms; }
+  .hero-on .hero-step-1{ opacity:1; transform:translateY(0) scale(1); filter:blur(0); transition-delay: 250ms; }
+  .hero-on .hero-step-2{ opacity:1; transform:translateY(0) scale(1); filter:blur(0); transition-delay: 450ms; }
+  .hero-on .hero-step-3{ opacity:1; transform:translateY(0) scale(1); filter:blur(0); transition-delay: 650ms; }
+  .hero-on .hero-step-4{ opacity:1; transform:translateY(0) scale(1); filter:blur(0); transition-delay: 850ms; }
 
-  /* Reveal on scroll */
+  /* Reveal on scroll — dramatic pop with blur sharpen (matches suty.dev) */
   .reveal{
     opacity:0;
-    transform: translateY(16px);
-    transition: opacity 700ms cubic-bezier(.16,1,.3,1), transform 700ms cubic-bezier(.16,1,.3,1);
-    will-change: opacity, transform;
+    transform: translateY(48px) scale(0.92);
+    filter: blur(10px);
+    transition:
+      opacity   900ms cubic-bezier(.16,1,.3,1),
+      transform 900ms cubic-bezier(.16,1,.3,1),
+      filter    900ms cubic-bezier(.16,1,.3,1);
+    will-change: opacity, transform, filter;
   }
-  .reveal.is-visible{ opacity:1; transform: translateY(0); }
+  .reveal.is-visible{ opacity:1; transform: translateY(0) scale(1); filter: blur(0); }
+
+  /* Page transition — soft fade-up when switching nav tabs */
+  @keyframes page-fade-in{
+    from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+    to   { opacity: 1; transform: translateY(0);  filter: blur(0); }
+  }
+  .page-transition{ animation: page-fade-in 380ms cubic-bezier(.16,1,.3,1) both; }
+
+  /* Respect motion preference */
+  @media (prefers-reduced-motion: reduce){
+    .hero-step-0,.hero-step-1,.hero-step-2,.hero-step-3,.hero-step-4,
+    .hero-on .hero-step-0,.hero-on .hero-step-1,.hero-on .hero-step-2,.hero-on .hero-step-3,.hero-on .hero-step-4,
+    .reveal,.reveal.is-visible,
+    .page-transition,.deck-card{
+      animation: none !important;
+      transition: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+      filter: none !important;
+    }
+  }
 
   /* Cards */
   .card-lift{
@@ -332,12 +363,25 @@
   /* prevent layout shift in icons */
   svg{ flex-shrink:0; }
 
-  /* Showcase deck — soft swap-in animation when carousel rotates */
+  /* Showcase deck — cinematic crossfade with blur sharpen (matches suty.dev) */
   @keyframes deck-fade-in{
-    from { opacity: 0; transform: translateY(8px) scale(0.985); }
-    to   { opacity: 1; transform: translateY(0)  scale(1); }
+    from { opacity: 0; transform: translateY(16px) scale(0.94); filter: blur(6px); }
+    to   { opacity: 1; transform: translateY(0)   scale(1);    filter: blur(0); }
   }
-  .deck-card{ animation: deck-fade-in 420ms cubic-bezier(.16,1,.3,1); }
+  .deck-card{
+    animation: deck-fade-in 550ms cubic-bezier(.16,1,.3,1);
+    will-change: opacity, transform, filter;
+  }
+
+  /* 3D rotated side cards for the showcase deck */
+  .rotate-y-15  { transform: rotateY(15deg)  translateX(8px)  translateY(-8px); transform-origin: right center; }
+  .-rotate-y-15 { transform: rotateY(-15deg) translateX(-8px) translateY(-8px); transform-origin: left center; }
+  @media (min-width: 640px){
+    .sm\:rotate-y-15  { transform: rotateY(20deg)  translateX(8px)  translateY(-8px); transform-origin: right center; }
+    .sm\:-rotate-y-15 { transform: rotateY(-20deg) translateX(-8px) translateY(-8px); transform-origin: left center; }
+  }
+  .stage-deck{ transform-style: preserve-3d; }
+  .stage-card{ backface-visibility: hidden; }
 </style>
 </head>
 <body class="bg-black text-white">

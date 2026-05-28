@@ -19,7 +19,7 @@ function App() {
     <div className="min-h-screen flex flex-col">
       <Header page={page} setPage={setPage} onOpenCart={() => setCartOpen(true)} />
 
-      <main className="flex-1">
+      <main key={page} className="flex-1 page-transition">
         {page === "home"           && <LandingPage onAdd={onAdd} setPage={setPage} />}
         {page === "scripts"        && <ScriptsPage onAdd={onAdd} />}
         {page === "subscriptions"  && <SubscriptionsPage onAdd={onAdd} />}
