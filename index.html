@@ -68,12 +68,21 @@
     background: radial-gradient(ellipse 50% 40% at 50% 0%, rgba(153,27,27,0.14), transparent 60%);
   }
 
-  /* Italic accent + shine */
+  /* Italic accent + shine.
+     - padding-right gives the italic slant room so the trailing letter
+       doesn't visually clip into the next character.
+     - padding-bottom + negative margin-bottom extends the inline-block's
+       own box downward so descenders (g, y, p) aren't clipped by tight
+       parent line-heights like leading-[0.95]. Negative margin keeps
+       surrounding flow exactly where it was. */
   .italic-accent{
     font-style: italic;
     color: var(--accent-hover);
     display: inline-block;
     padding-right: 0.12em;
+    padding-bottom: 0.15em;
+    margin-bottom: -0.15em;
+    overflow: visible;
     position: relative;
   }
   .shine{
