@@ -142,28 +142,32 @@ function ShowcaseDeck({ scripts, onAdd, onMore }) {
           </div>
         </Reveal>
 
-        <div className="stage-deck flex flex-col items-center justify-center gap-6 sm:flex-row sm:items-end sm:gap-4" style={{ perspective: "1400px" }}>
-          <ShowcaseMini key={`L-${left.id}`}   script={left}   position="left"   onClick={() => onAdd && onAdd(left)} />
-          <ShowcaseMini key={`C-${center.id}`} script={center} position="center" onClick={() => onAdd && onAdd(center)} />
-          <ShowcaseMini key={`R-${right.id}`}  script={right}  position="right"  onClick={() => onAdd && onAdd(right)} />
-        </div>
+        <Reveal delay={80}>
+          <div className="stage-deck flex flex-col items-center justify-center gap-6 sm:flex-row sm:items-end sm:gap-4" style={{ perspective: "1400px" }}>
+            <ShowcaseMini key={`L-${left.id}`}   script={left}   position="left"   onClick={() => onAdd && onAdd(left)} />
+            <ShowcaseMini key={`C-${center.id}`} script={center} position="center" onClick={() => onAdd && onAdd(center)} />
+            <ShowcaseMini key={`R-${right.id}`}  script={right}  position="right"  onClick={() => onAdd && onAdd(right)} />
+          </div>
+        </Reveal>
 
         {ordered.length > 1 && (
-          <div className="mt-10 flex justify-center gap-1.5">
-            {ordered.map((p, i) => (
-              <button
-                key={p.id}
-                onClick={() => setIndex(i)}
-                aria-label={`Show ${p.displayName}`}
-                className={"h-1.5 rounded-full transition-all " + (
-                  i === index
-                    ? "w-8 bg-[var(--accent)]"
-                    : "w-1.5 bg-[var(--border-2)] hover:bg-[var(--fg-muted)]"
-                )}
-                style={i === index ? { boxShadow: "0 0 10px rgba(153,27,27,0.6)" } : undefined}
-              />
-            ))}
-          </div>
+          <Reveal delay={120}>
+            <div className="mt-10 flex justify-center gap-1.5">
+              {ordered.map((p, i) => (
+                <button
+                  key={p.id}
+                  onClick={() => setIndex(i)}
+                  aria-label={`Show ${p.displayName}`}
+                  className={"h-1.5 rounded-full transition-all " + (
+                    i === index
+                      ? "w-8 bg-[var(--accent)]"
+                      : "w-1.5 bg-[var(--border-2)] hover:bg-[var(--fg-muted)]"
+                  )}
+                  style={i === index ? { boxShadow: "0 0 10px rgba(153,27,27,0.6)" } : undefined}
+                />
+              ))}
+            </div>
+          </Reveal>
         )}
 
         <Reveal delay={150}>
