@@ -30,11 +30,16 @@ function ProductCard({ script, onAdd, onOpen, compact = false }) {
   const isSub = script.type === "subscription";
   const [added, setAdded] = useState(false);
   const addedTimerRef = useRef(null);
+  const imageRef = useRef(null);
   useEffect(() => () => clearTimeout(addedTimerRef.current), []);
 
   const onAddClick = (e) => {
     e.stopPropagation();
     if (!onAdd) return;
+    // Fly the card's image to the cart icon for the "Added" delight
+    if (imageRef.current && script.image) {
+      flyImageToCart(imageRef.current, script.image);
+    }
     onAdd(script);
     setAdded(true);
     clearTimeout(addedTimerRef.current);
@@ -56,7 +61,7 @@ function ProductCard({ script, onAdd, onOpen, compact = false }) {
       aria-label={`View ${script.displayName}`}
     >
       {/* Media */}
-      <div className="relative aspect-[16/10] overflow-hidden">
+      <div ref={imageRef} className="relative aspect-[16/10] overflow-hidden">
         <ProductImage src={script.image} alt={script.displayName || script.name} />
 
         {/* Top-left subscription pill */}
@@ -124,8 +129,10 @@ function ProductCard({ script, onAdd, onOpen, compact = false }) {
   );
 }
 
-// Reusable "Add to cart" / "Subscribe" CTA with the same Added feedback
-function AddCTA({ script, onAdd, label = "Add to cart", labelAdded = "Added", icon = "arrow-right", className = "" }) {
+// Reusable "Add to cart" / "Subscribe" CTA with the same Added feedback.
+// Pass `flyFromRef` to also fire the fly-to-cart image animation when
+// clicked — e.g. the product detail page hands in its hero image ref.
+function AddCTA({ script, onAdd, label = "Add to cart", labelAdded = "Added", icon = "arrow-right", className = "", flyFromRef = null }) {
   const [added, setAdded] = useState(false);
   const tRef = useRef(null);
   useEffect(() => () => clearTimeout(tRef.current), []);
@@ -133,6 +140,9 @@ function AddCTA({ script, onAdd, label = "Add to cart", labelAdded = "Added", ic
     <button
       onClick={() => {
         if (!onAdd) return;
+        if (flyFromRef && flyFromRef.current && script && script.image) {
+          flyImageToCart(flyFromRef.current, script.image);
+        }
         onAdd(script);
         setAdded(true);
         clearTimeout(tRef.current);

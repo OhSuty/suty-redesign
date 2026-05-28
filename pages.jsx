@@ -712,6 +712,7 @@ function AboutPage() {
 
 // ── Product detail page ──────────────────────────────────────────────
 function ProductDetailPage({ script, onBack, onAdd }) {
+  const heroRef = useRef(null);
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
   }, [script && script.id]);
@@ -737,7 +738,7 @@ function ProductDetailPage({ script, onBack, onAdd }) {
         <div className="grid md:grid-cols-[1.2fr_1fr] gap-10 lg:gap-14 items-start">
           {/* Hero media — YouTube/Vimeo iframe if the description has one, else image */}
           <Reveal>
-            <div className="relative aspect-[16/10] rounded-2xl overflow-hidden border border-[var(--border)] bg-black">
+            <div ref={heroRef} className="relative aspect-[16/10] rounded-2xl overflow-hidden border border-[var(--border)] bg-black">
               {script.videoUrl ? (
                 <iframe
                   src={Tebex.toEmbedUrl(script.videoUrl)}
@@ -810,6 +811,7 @@ function ProductDetailPage({ script, onBack, onAdd }) {
                 <AddCTA
                   script={script}
                   onAdd={onAdd}
+                  flyFromRef={heroRef}
                   label={isSub ? "Subscribe" : "Add to cart"}
                   labelAdded="Added to cart"
                   className="flex-1 md:flex-none"

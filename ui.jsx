@@ -554,6 +554,61 @@ function ConfirmDialog({ open, title, message, onConfirm, onCancel,
   );
 }
 
+// ── Fly-to-cart animation — image ghost arcs from product → cart icon ──
+//
+// Caller passes the source element (usually the product image wrapper).
+// We clone its appearance into a fixed-position <img>, animate its
+// transform to land on the cart icon, then trigger a 'burst' pulse on
+// the icon. Honours prefers-reduced-motion (skips silently).
+function flyImageToCart(fromEl, src) {
+  if (!fromEl || !src) return;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const target = document.querySelector("[data-cart-icon]");
+  if (!target) return;
+
+  const from = fromEl.getBoundingClientRect();
+  const to   = target.getBoundingClientRect();
+  if (from.width === 0 || from.height === 0) return;
+
+  const ghost = document.createElement("img");
+  ghost.src = src;
+  ghost.alt = "";
+  ghost.className = "fly-ghost";
+  ghost.style.left   = `${from.left}px`;
+  ghost.style.top    = `${from.top}px`;
+  ghost.style.width  = `${from.width}px`;
+  ghost.style.height = `${from.height}px`;
+  ghost.style.transform = "translate(0, 0) scale(1) rotate(0deg)";
+  ghost.style.opacity = "1";
+  document.body.appendChild(ghost);
+
+  // Force layout, then animate
+  // Use rAF twice for safer reflow on some browsers
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const dx = (to.left + to.width / 2) - (from.left + from.width / 2);
+      const dy = (to.top  + to.height / 2) - (from.top  + from.height / 2);
+      ghost.style.transform     = `translate(${dx}px, ${dy}px) scale(0.06) rotate(-12deg)`;
+      ghost.style.opacity       = "0.35";
+      ghost.style.borderRadius  = "50%";
+      ghost.style.filter        = "brightness(1.1) saturate(1.2)";
+    });
+  });
+
+  // When the ghost lands, burst the cart icon then clean up
+  const landMs = 620;
+  setTimeout(() => {
+    target.classList.remove("cart-burst");
+    // force reflow to allow re-trigger of the keyframe
+    void target.offsetWidth;
+    target.classList.add("cart-burst");
+    setTimeout(() => target.classList.remove("cart-burst"), 700);
+  }, landMs);
+  setTimeout(() => ghost.remove(), 760);
+}
+
+window.flyImageToCart = flyImageToCart;
+
 // ── Toast — small bottom-right banner for ephemeral feedback ──────────
 function Toast({ open, onClose, tone = "success", title, children }) {
   useEffect(() => {
@@ -727,7 +782,7 @@ function Header({ page, setPage, onOpenCart }) {
         <div className="flex items-center gap-2">
           <DiscordButton />
           <FivemButton />
-          <button onClick={onOpenCart} aria-label="Open cart" className="relative h-10 w-10 grid place-items-center rounded-md border border-[var(--border-2)] hover:border-[#3a3a3a] hover:bg-white/[0.03] transition">
+          <button onClick={onOpenCart} aria-label="Open cart" data-cart-icon className="relative h-10 w-10 grid place-items-center rounded-md border border-[var(--border-2)] hover:border-[#3a3a3a] hover:bg-white/[0.03] transition">
             <Icon name="shopping-bag" size={15} />
             {cart.count > 0 && (
               <span
