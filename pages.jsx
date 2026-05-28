@@ -176,31 +176,62 @@ function ShowcaseDeck({ scripts, onAdd, onMore }) {
 
 function FrameworkSection({ active, setActive, scripts }) {
   const list = scripts || [];
+  // Order matches suty.dev exactly: ESX → QBCore → QBX
+  const order = ["esx", "qbcore", "qbx"];
   return (
-    <section className="relative py-28">
+    <section className="relative py-28 border-y border-[var(--border)] bg-[var(--surface)]">
       <div className="absolute inset-0 spotlight-soft pointer-events-none" />
-      <div className="relative max-w-6xl mx-auto px-6 text-center">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent opacity-40" />
+
+      <div className="relative max-w-5xl mx-auto px-6 text-center">
         <SectionEyebrow>Compatibility</SectionEyebrow>
         <h2 className="mt-5 font-black tracking-tighter leading-[1] text-4xl md:text-5xl">
-          Works with <span className="italic-accent shine">every</span> framework.
+          Built for every <span className="italic-accent shine">framework</span>.
         </h2>
         <p className="mt-5 text-[15px] text-[var(--fg-muted)] max-w-md mx-auto">
-          Tap a framework to filter the catalogue — every script supports at least two of the big three.
+          Most Suty scripts ship with native support for all three of the major FiveM frameworks — drop them in and they just work.
         </p>
 
-        <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {["qbx", "qbcore", "esx"].map((f) => (
-            <button
-              key={f}
-              onClick={() => setActive(active === f ? null : f)}
-              className={"framework-pill h-28 rounded-xl border border-[var(--border)] bg-[var(--surface)] flex flex-col items-center justify-center text-white/80 " + (active === f ? "active" : "")}
-            >
-              <div className="font-black text-3xl tracking-tighter">{FRAMEWORK_LABEL[f]}</div>
-              <div className="mt-1.5 text-[11px] uppercase tracking-[0.22em] text-[var(--fg-muted)]">
-                {list.filter(s => s.frameworks.includes(f)).length} scripts
-              </div>
-            </button>
-          ))}
+        <div className="mt-12 grid grid-cols-3 items-start gap-4 sm:gap-10 md:gap-16">
+          {order.map((f) => {
+            const meta = FRAMEWORK_META[f];
+            if (!meta) return null;
+            const count = list.filter(s => s.frameworks.includes(f)).length;
+            const isActive = active === f;
+            return (
+              <button
+                key={f}
+                onClick={() => setActive(isActive ? null : f)}
+                aria-label={`${meta.label} — ${count} scripts`}
+                title={`${meta.label} → ${meta.href.replace(/^https?:\/\//, "")}`}
+                className="group flex flex-col items-center gap-3 outline-none"
+              >
+                <div
+                  className={
+                    "relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl border bg-black p-3 sm:p-4 transition-all duration-300 group-hover:scale-105 " +
+                    (isActive
+                      ? "border-[var(--accent)] shadow-[0_0_24px_rgba(153,27,27,0.45)]"
+                      : "border-[var(--border)] group-hover:border-[var(--accent)]")
+                  }
+                >
+                  <img
+                    src={meta.image}
+                    alt={meta.label}
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <div className={
+                  "text-xs sm:text-sm font-bold uppercase tracking-[0.2em] transition-colors " +
+                  (isActive ? "text-[var(--accent-hover)]" : "text-white group-hover:text-[var(--accent-hover)]")
+                }>
+                  {meta.label}
+                </div>
+                <div className="text-[10px] uppercase tracking-[0.22em] text-[var(--fg-muted)]">
+                  {count} {count === 1 ? "script" : "scripts"}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -355,19 +386,28 @@ function ScriptsPage({ onAdd }) {
           </div>
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] uppercase tracking-[0.2em] text-[var(--fg-dim)] mr-1 hidden sm:inline">Framework</span>
-            {["qbx", "qbcore", "esx"].map((f) => (
-              <button
-                key={f}
-                onClick={() => setFramework(framework === f ? null : f)}
-                className={"h-8 px-3 rounded-full text-[12px] font-mono uppercase tracking-[0.18em] border transition " +
-                  (framework === f
-                    ? "border-[rgba(153,27,27,0.55)] bg-[rgba(153,27,27,0.12)] text-white"
-                    : "border-[var(--border-2)] text-[var(--fg-muted)] hover:text-white hover:border-[#3a3a3a]")
-                }
-              >
-                {FRAMEWORK_LABEL[f]}
-              </button>
-            ))}
+            {["esx", "qbcore", "qbx"].map((f) => {
+              const meta = FRAMEWORK_META[f];
+              const isActive = framework === f;
+              return (
+                <button
+                  key={f}
+                  onClick={() => setFramework(isActive ? null : f)}
+                  className={"h-8 pl-1.5 pr-3 rounded-full text-[12px] font-semibold border inline-flex items-center gap-1.5 transition " +
+                    (isActive
+                      ? "border-[rgba(153,27,27,0.55)] bg-[rgba(153,27,27,0.12)] text-white"
+                      : "border-[var(--border-2)] text-[var(--fg-muted)] hover:text-white hover:border-[#3a3a3a]")
+                  }
+                >
+                  {meta && (
+                    <span className="grid place-items-center h-5 w-5 rounded-full bg-black border border-white/10">
+                      <img src={meta.image} alt="" className="h-3 w-3 object-contain" aria-hidden />
+                    </span>
+                  )}
+                  {meta ? meta.label : FRAMEWORK_LABEL[f]}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

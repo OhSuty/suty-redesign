@@ -110,14 +110,26 @@ function useReveal({ stagger = 60 } = {}) {
   return rootRef;
 }
 
-// ── Framework logos (3-letter monogram, no copyrighted marks) ──────────
+// ── Framework badge — official logo + accent color (matches suty.dev) ──
 function FrameworkBadge({ kind, size = "sm", className = "" }) {
-  const label = FRAMEWORK_LABEL[kind] || kind;
+  const meta = FRAMEWORK_META[kind];
+  const label = (meta && meta.label) || FRAMEWORK_LABEL[kind] || kind;
   const sizing = size === "lg"
-    ? "h-9 px-3 text-xs"
-    : "h-6 px-2 text-[10px]";
+    ? "h-9 px-3 gap-2 text-xs"
+    : "h-6 px-2.5 gap-1.5 text-[11px]";
   return (
-    <span className={`inline-flex items-center justify-center ${sizing} rounded-md border border-[var(--border-2)] bg-[#0c0c0c] font-mono uppercase tracking-[0.18em] text-[var(--fg-muted)] ${className}`}>
+    <span
+      className={`inline-flex items-center rounded-full border border-white/10 bg-black/40 font-semibold ${sizing} ${className}`}
+      style={meta ? { color: meta.color } : undefined}
+    >
+      {meta && meta.image && (
+        <img
+          src={meta.image}
+          alt=""
+          className={size === "lg" ? "h-4 w-4 object-contain" : "h-3.5 w-3.5 object-contain"}
+          aria-hidden
+        />
+      )}
       {label}
     </span>
   );

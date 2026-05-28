@@ -196,6 +196,28 @@ const FRAMEWORK_LABEL = {
   esx: "ESX"
 };
 
+// Match suty.dev exactly — same R2 image URLs, same accent colors, same links.
+const FRAMEWORK_META = {
+  esx: {
+    label: "ESX",
+    image: "https://r2.fivemanage.com/CZREz3HGpG2hkho5t3Mth/esx.png",
+    href:  "https://esx-framework.org/",
+    color: "#fecaca"
+  },
+  qbcore: {
+    label: "QBCore",
+    image: "https://r2.fivemanage.com/CZREz3HGpG2hkho5t3Mth/qbcore1.png",
+    href:  "https://docs.qbcore.org/",
+    color: "#bfdbfe"
+  },
+  qbx: {
+    label: "QBX",
+    image: "https://r2.fivemanage.com/CZREz3HGpG2hkho5t3Mth/qbox-logo2.png",
+    href:  "https://www.qbox.re/",
+    color: "#a5f3fc"
+  }
+};
+
 const FAQS = [
   {
     q: "Are your scripts encrypted?",
@@ -236,6 +258,6 @@ function avatarStyle(name){
 }
 
 Object.assign(window, {
-  SCRIPTS, SUBSCRIPTIONS, BUYERS, CATEGORIES, FRAMEWORK_LABEL, FAQS,
+  SCRIPTS, SUBSCRIPTIONS, BUYERS, CATEGORIES, FRAMEWORK_LABEL, FRAMEWORK_META, FAQS,
   avatarStyle, nameHues
 });
